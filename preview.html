@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Berliner Bäder Widget – Preview</title>
+  <style>
+    /* ── Reset & base ─────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+      background: #1c1c1e;
+      color: #fff;
+      min-height: 100vh;
+      padding: 40px 24px 60px;
+    }
+
+    h1 {
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: -0.4px;
+      margin-bottom: 4px;
+    }
+    .subtitle {
+      font-size: 13px;
+      color: #8e8e93;
+      margin-bottom: 40px;
+    }
+
+    /* ── Section labels ───────────────────────────────────────── */
+    .section-label {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      color: #636366;
+      margin: 36px 0 14px;
+    }
+
+    /* ── Widget grid ──────────────────────────────────────────── */
+    .row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      align-items: flex-start;
+    }
+
+    /* ── Shared widget shell ──────────────────────────────────── */
+    .widget {
+      background: #111e30;          /* Token.bgColor */
+      border-radius: 22px;
+      overflow: hidden;
+      position: relative;
+      flex-shrink: 0;
+    }
+
+    /* iOS widget sizes (points → pixels, roughly 2× for retina feel) */
+    .widget-small  { width: 169px; height: 169px; padding: 14px; }
+    .widget-medium { width: 360px; height: 169px; padding: 14px; display: flex; gap: 0; }
+    .widget-large  { width: 360px; height: 379px; }
+
+    /* ── Design tokens ────────────────────────────────────────── */
+    :root {
+      --open:    #1fc07f;
+      --closed:  #d93f3f;
+      --warning: #f5a623;
+      --muted:   rgba(255,255,255,0.50);
+      --dim:     rgba(255,255,255,0.25);
+    }
+
+    /* ── Status badge ─────────────────────────────────────────── */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 99px;
+      line-height: 1;
+    }
+    .badge.open   { background: var(--open);   color: #fff; }
+    .badge.closed { background: var(--closed); color: #fff; }
+    .badge .dot   { width: 6px; height: 6px; border-radius: 50%; background: rgba(255,255,255,0.7); }
+
+    /* ── Status dot (large widget rows) ──────────────────────── */
+    .status-dot {
+      width: 9px; height: 9px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      margin-top: 4px;
+    }
+    .status-dot.open   { background: var(--open); }
+    .status-dot.closed { background: var(--closed); }
+
+    /* ── Pool icon ────────────────────────────────────────────── */
+    .pool-icon { font-size: 13px; opacity: 0.75; }
+
+    /* ── Warning indicator ────────────────────────────────────── */
+    .warning-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 9px;
+      color: var(--warning);
+      line-height: 1.3;
+    }
+
+    /* ──────────────────────────────────────────────────────────
+       SMALL WIDGET
+    ────────────────────────────────────────────────────────── */
+    .small-inner {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+    }
+    .small-name {
+      font-size: 12px;
+      font-weight: 600;
+      line-height: 1.3;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .small-spacer { flex: 1; }
+    .small-hours {
+      font-size: 11px;
+      font-variant-numeric: tabular-nums;
+      color: rgba(255,255,255,0.80);
+      margin-top: 5px;
+      font-family: "SF Mono", "Menlo", monospace;
+    }
+    .small-warning { margin-top: 5px; }
+
+    /* ──────────────────────────────────────────────────────────
+       MEDIUM WIDGET  (two columns)
+    ────────────────────────────────────────────────────────── */
+    .medium-col {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      min-width: 0;
+      padding: 0 4px;
+    }
+    .medium-col + .medium-col {
+      border-left: 1px solid rgba(255,255,255,0.10);
+      padding-left: 14px;
+    }
+    .col-name {
+      font-size: 11px;
+      font-weight: 600;
+      line-height: 1.3;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .col-hours-list {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      margin-top: 3px;
+    }
+    .hours-row {
+      display: flex;
+      gap: 6px;
+      font-size: 9px;
+      font-family: "SF Mono", "Menlo", monospace;
+    }
+    .hours-day   { color: var(--muted); width: 36px; flex-shrink: 0; }
+    .hours-time  { color: rgba(255,255,255,0.85); }
+
+    /* ──────────────────────────────────────────────────────────
+       LARGE WIDGET
+    ────────────────────────────────────────────────────────── */
+    .large-header {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      padding: 13px 15px 10px;
+      border-bottom: 1px solid rgba(255,255,255,0.10);
+    }
+    .large-header-title {
+      font-size: 14px;
+      font-weight: 700;
+      flex: 1;
+    }
+    .large-header-time {
+      font-size: 10px;
+      color: var(--muted);
+      font-variant-numeric: tabular-nums;
+    }
+    .large-drop { font-size: 14px; color: var(--open); }
+
+    .large-rows { display: flex; flex-direction: column; }
+
+    .large-row {
+      display: flex;
+      gap: 10px;
+      padding: 10px 15px;
+      border-bottom: 1px solid rgba(255,255,255,0.07);
+    }
+    .large-row:last-child { border-bottom: none; }
+
+    .large-row-body { display: flex; flex-direction: column; gap: 3px; flex: 1; min-width: 0; }
+    .large-row-name {
+      font-size: 13px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .large-row-hours {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .large-row-warning {
+      font-size: 9px;
+      color: var(--warning);
+      line-height: 1.4;
+    }
+
+    /* ──────────────────────────────────────────────────────────
+       LOCK SCREEN WIDGETS
+    ────────────────────────────────────────────────────────── */
+    .lockscreen-row { display: flex; gap: 16px; align-items: flex-start; flex-wrap: wrap; }
+
+    /* Accessory Circular */
+    .accessory-circular {
+      width: 62px; height: 62px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.08);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 28px;
+    }
+    .accessory-circular-label {
+      font-size: 10px;
+      color: #8e8e93;
+      text-align: center;
+      margin-top: 6px;
+    }
+    .accessory-circular-wrap { display: flex; flex-direction: column; align-items: center; }
+
+    /* Accessory Rectangular */
+    .accessory-rect {
+      width: 160px; height: 62px;
+      border-radius: 14px;
+      background: rgba(255,255,255,0.08);
+      padding: 10px 12px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 4px;
+    }
+    .accessory-rect-name { font-size: 11px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .accessory-rect-status { font-size: 10px; color: var(--muted); display: flex; align-items: center; gap: 4px; }
+
+    /* Accessory Inline */
+    .accessory-inline {
+      width: 260px; height: 26px;
+      border-radius: 8px;
+      background: rgba(255,255,255,0.08);
+      display: flex; align-items: center;
+      padding: 0 10px;
+      gap: 5px;
+      font-size: 11px;
+      color: rgba(255,255,255,0.85);
+      white-space: nowrap;
+      overflow: hidden;
+    }
+    .accessory-inline-label { font-size: 10px; color: #8e8e93; margin-top: 5px; }
+
+    /* ── Toggle controls ──────────────────────────────────────── */
+    .controls {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      display: flex;
+      gap: 8px;
+    }
+    .ctrl-btn {
+      padding: 8px 14px;
+      border-radius: 99px;
+      border: none;
+      background: rgba(255,255,255,0.12);
+      color: #fff;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .ctrl-btn:hover { background: rgba(255,255,255,0.22); }
+    .ctrl-btn.active { background: var(--open); }
+
+    /* ── Warning banner (toggle preview) ─────────────────────── */
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+
+  <h1>🏊 Berliner Bäder Widget</h1>
+  <p class="subtitle">Mockup — alle Widget-Größen mit Platzhalterdaten</p>
+
+  <!-- ═══════════════════════════════════════════════════════
+       SMALL
+  ══════════════════════════════════════════════════════════ -->
+  <div class="section-label">Small &nbsp;·&nbsp; 1 Bad</div>
+  <div class="row">
+
+    <!-- Small – open, no warning -->
+    <div class="widget widget-small">
+      <div class="small-inner">
+        <div class="small-name">
+          <span class="pool-icon">🏛️</span>
+          <span>SSE Europasportpark</span>
+        </div>
+        <div class="small-spacer"></div>
+        <span class="badge open"><span class="dot"></span>Geöffnet</span>
+        <div class="small-hours">06:30–22:00 Uhr</div>
+      </div>
+    </div>
+
+    <!-- Small – closed -->
+    <div class="widget widget-small">
+      <div class="small-inner">
+        <div class="small-name">
+          <span class="pool-icon">🏛️</span>
+          <span>Stadtbad Mitte</span>
+        </div>
+        <div class="small-spacer"></div>
+        <span class="badge closed"><span class="dot"></span>Geschlossen</span>
+        <div class="small-hours">08:00–20:00 Uhr</div>
+      </div>
+    </div>
+
+    <!-- Small – open with warning -->
+    <div class="widget widget-small">
+      <div class="small-inner">
+        <div class="small-name">
+          <span class="pool-icon">☀️</span>
+          <span>Sommerbad Olympiastadion</span>
+        </div>
+        <div class="small-spacer"></div>
+        <span class="badge open"><span class="dot"></span>Geöffnet</span>
+        <div class="small-hours">09:00–20:00 Uhr</div>
+        <div class="small-warning warning-tag">
+          ⚠️ Becken 2 gesperrt (Wartung)
+        </div>
+      </div>
+    </div>
+
+    <!-- Small – lake, closed (winter) -->
+    <div class="widget widget-small">
+      <div class="small-inner">
+        <div class="small-name">
+          <span class="pool-icon">🌊</span>
+          <span>Strandbad Wannsee</span>
+        </div>
+        <div class="small-spacer"></div>
+        <span class="badge closed"><span class="dot"></span>Geschlossen</span>
+        <div class="small-hours">Saison: Mai–Sept.</div>
+        <div class="small-warning warning-tag">
+          ⚠️ Außerhalb der Badesaison
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /row small -->
+
+
+  <!-- ═══════════════════════════════════════════════════════
+       MEDIUM
+  ══════════════════════════════════════════════════════════ -->
+  <div class="section-label">Medium &nbsp;·&nbsp; 2 Bäder</div>
+  <div class="row">
+
+    <!-- Medium – both open -->
+    <div class="widget widget-medium">
+      <div class="medium-col">
+        <div class="col-name"><span class="pool-icon">🏛️</span> SSE Europasportpark</div>
+        <span class="badge open"><span class="dot"></span>Geöffnet</span>
+        <div class="col-hours-list">
+          <div class="hours-row"><span class="hours-day">Mo–Fr</span><span class="hours-time">06:30–22:00</span></div>
+          <div class="hours-row"><span class="hours-day">Sa</span><span class="hours-time">08:00–20:00</span></div>
+          <div class="hours-row"><span class="hours-day">So</span><span class="hours-time">08:00–18:00</span></div>
+        </div>
+      </div>
+      <div class="medium-col">
+        <div class="col-name"><span class="pool-icon">🏛️</span> Stadtbad Mitte</div>
+        <span class="badge open"><span class="dot"></span>Geöffnet</span>
+        <div class="col-hours-list">
+          <div class="hours-row"><span class="hours-day">Mo–Fr</span><span class="hours-time">06:30–22:00</span></div>
+          <div class="hours-row"><span class="hours-day">Sa</span><span class="hours-time">08:00–20:00</span></div>
+          <div class="hours-row"><span class="hours-day">So</span><span class="hours-time">10:00–18:00</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Medium – one open, one with warning -->
+    <div class="widget widget-medium">
+      <div class="medium-col">
+        <div class="col-name"><span class="pool-icon">🏛️</span> Stadtbad Neukölln</div>
+        <span class="badge open"><span class="dot"></span>Geöffnet</span>
+        <div class="col-hours-list">
+          <div class="hours-row"><span class="hours-day">Mo–Fr</span><span class="hours-time">07:00–21:30</span></div>
+          <div class="hours-row"><span class="hours-day">Sa–So</span><span class="hours-time">08:00–18:00</span></div>
+        </div>
+      </div>
+      <div class="medium-col">
+        <div class="col-name"><span class="pool-icon">☀️</span> Sommerbad Kreuzberg</div>
+        <span class="badge closed"><span class="dot"></span>Geschlossen</span>
+        <div class="col-hours-list">
+          <div class="hours-row"><span class="hours-day">täglich</span><span class="hours-time">07:00–19:30</span></div>
+        </div>
+        <div class="warning-tag" style="margin-top:6px">⚠️ Nur Saisonbetrieb</div>
+      </div>
+    </div>
+
+  </div><!-- /row medium -->
+
+
+  <!-- ═══════════════════════════════════════════════════════
+       LARGE
+  ══════════════════════════════════════════════════════════ -->
+  <div class="section-label">Large &nbsp;·&nbsp; bis zu 4 Bäder</div>
+  <div class="row">
+
+    <div class="widget widget-large">
+      <!-- Header -->
+      <div class="large-header">
+        <span class="large-drop">💧</span>
+        <span class="large-header-title">Berliner Bäder</span>
+        <span class="large-header-time" id="live-time">--:--</span>
+      </div>
+
+      <div class="large-rows">
+
+        <!-- Row 1 – open -->
+        <div class="large-row">
+          <div class="status-dot open"></div>
+          <div class="large-row-body">
+            <div class="large-row-name">🏛️ SSE Europasportpark</div>
+            <div class="large-row-hours">
+              <div class="hours-row"><span class="hours-day">Mo–Fr</span><span class="hours-time">06:30–22:00</span></div>
+              <div class="hours-row"><span class="hours-day">Sa</span><span class="hours-time">08:00–20:00</span></div>
+              <div class="hours-row"><span class="hours-day">So</span><span class="hours-time">08:00–18:00</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Row 2 – open with warning -->
+        <div class="large-row">
+          <div class="status-dot open"></div>
+          <div class="large-row-body">
+            <div class="large-row-name">
+              🏛️ Stadtbad Mitte
+              <span style="font-size:11px; color: var(--warning)">⚠️</span>
+            </div>
+            <div class="large-row-hours">
+              <div class="hours-row"><span class="hours-day">Mo–Fr</span><span class="hours-time">06:30–22:00</span></div>
+              <div class="hours-row"><span class="hours-day">Sa</span><span class="hours-time">08:00–20:00</span></div>
+            </div>
+            <div class="large-row-warning">Sprungbecken bis 15.03. gesperrt</div>
+          </div>
+        </div>
+
+        <!-- Row 3 – closed -->
+        <div class="large-row">
+          <div class="status-dot closed"></div>
+          <div class="large-row-body">
+            <div class="large-row-name">🏛️ Schwimmhalle Pankow</div>
+            <div class="large-row-hours">
+              <div class="hours-row"><span class="hours-day">Mo–Fr</span><span class="hours-time">07:00–21:30</span></div>
+              <div class="hours-row"><span class="hours-day">Sa–So</span><span class="hours-time">08:00–18:00</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Row 4 – outdoor, warning -->
+        <div class="large-row">
+          <div class="status-dot closed"></div>
+          <div class="large-row-body">
+            <div class="large-row-name">
+              ☀️ Sommerbad Olympiastadion
+              <span style="font-size:11px; color: var(--warning)">⚠️</span>
+            </div>
+            <div class="large-row-hours">
+              <div class="hours-row"><span class="hours-day">täglich</span><span class="hours-time">09:00–20:00 Uhr</span></div>
+            </div>
+            <div class="large-row-warning">Außerhalb der Badesaison geschlossen</div>
+          </div>
+        </div>
+
+      </div><!-- /large-rows -->
+    </div>
+
+  </div><!-- /row large -->
+
+
+  <!-- ═══════════════════════════════════════════════════════
+       LOCK SCREEN
+  ══════════════════════════════════════════════════════════ -->
+  <div class="section-label">Lock Screen / Sperrbildschirm</div>
+  <div class="lockscreen-row">
+
+    <!-- Circular -->
+    <div>
+      <div class="accessory-circular-wrap">
+        <div class="accessory-circular">💧</div>
+        <div class="accessory-circular-label">Circular</div>
+      </div>
+    </div>
+
+    <!-- Circular closed -->
+    <div>
+      <div class="accessory-circular-wrap">
+        <div class="accessory-circular" style="opacity:0.4">💧</div>
+        <div class="accessory-circular-label">Circular (zu)</div>
+      </div>
+    </div>
+
+    <!-- Rectangular -->
+    <div>
+      <div class="accessory-rect">
+        <div class="accessory-rect-name">SSE Europasportpark</div>
+        <div class="accessory-rect-status">
+          <span style="color:var(--open)">✓</span> Geöffnet &nbsp;·&nbsp; 06:30–22:00
+        </div>
+      </div>
+      <div class="accessory-inline-label" style="margin-top:6px;">Rectangular</div>
+    </div>
+
+    <!-- Rectangular closed -->
+    <div>
+      <div class="accessory-rect">
+        <div class="accessory-rect-name">Strandbad Wannsee</div>
+        <div class="accessory-rect-status">
+          <span style="color:var(--closed)">✕</span> Geschlossen &nbsp;·&nbsp; Saisonbetrieb
+        </div>
+      </div>
+      <div class="accessory-inline-label" style="margin-top:6px;">Rectangular</div>
+    </div>
+
+    <!-- Inline -->
+    <div>
+      <div class="accessory-inline">
+        💧 SSE Europasportpark: Geöffnet · 06:30–22:00
+      </div>
+      <div class="accessory-inline-label">Inline</div>
+    </div>
+
+  </div><!-- /lockscreen-row -->
+
+
+  <!-- ═══════════════════════════════════════════════════════
+       TOGGLE CONTROLS
+  ══════════════════════════════════════════════════════════ -->
+  <div class="controls">
+    <button class="ctrl-btn active" id="btn-open" onclick="setMode('open')">Geöffnet</button>
+    <button class="ctrl-btn"       id="btn-closed" onclick="setMode('closed')">Geschlossen</button>
+    <button class="ctrl-btn"       id="btn-warning" onclick="toggleWarning()">⚠️ Warnung</button>
+  </div>
+
+  <script>
+    // Live clock
+    function tick() {
+      const now = new Date();
+      const h = String(now.getHours()).padStart(2,'0');
+      const m = String(now.getMinutes()).padStart(2,'0');
+      document.getElementById('live-time').textContent = h + ':' + m + ' Uhr';
+    }
+    tick();
+    setInterval(tick, 10000);
+
+    // Toggle open / closed appearance on the first small widget
+    let currentMode = 'open';
+    function setMode(mode) {
+      currentMode = mode;
+      document.getElementById('btn-open').classList.toggle('active', mode === 'open');
+      document.getElementById('btn-closed').classList.toggle('active', mode === 'closed');
+
+      const badges = document.querySelectorAll('.badge');
+      badges.forEach(b => {
+        if (mode === 'open') {
+          b.classList.replace('closed','open');
+          b.querySelector('.dot') && (b.querySelector('span:last-child') || b).textContent;
+          b.childNodes[b.childNodes.length-1].textContent = 'Geöffnet';
+        } else {
+          b.classList.replace('open','closed');
+          b.childNodes[b.childNodes.length-1].textContent = 'Geschlossen';
+        }
+      });
+
+      const dots = document.querySelectorAll('.status-dot');
+      dots.forEach(d => {
+        d.classList.toggle('open',   mode === 'open');
+        d.classList.toggle('closed', mode === 'closed');
+      });
+    }
+
+    let warningVisible = true;
+    function toggleWarning() {
+      warningVisible = !warningVisible;
+      document.getElementById('btn-warning').classList.toggle('active', warningVisible);
+      document.querySelectorAll('.warning-tag, .large-row-warning').forEach(el => {
+        el.classList.toggle('hidden', !warningVisible);
+      });
+    }
+  </script>
+
+</body>
+</html>
