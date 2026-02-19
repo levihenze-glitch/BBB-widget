@@ -51,12 +51,18 @@ private struct SmallPoolView: View {
             Token.bgColor.ignoresSafeArea()
             if let s = status {
                 VStack(alignment: .leading, spacing: 6) {
-                    // Pool type icon + name
-                    Label(s.pool.name, systemImage: poolIcon(s.pool.type))
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundColor(.white)
-                        .lineLimit(2)
-                        .minimumScaleFactor(0.7)
+                    // Status-coloured dot + name
+                    HStack(alignment: .top, spacing: 5) {
+                        Circle()
+                            .fill(s.isCurrentlyOpen ? Token.openColor : Token.closedColor)
+                            .frame(width: 8, height: 8)
+                            .padding(.top, 2)
+                        Text(s.pool.name)
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(.white)
+                            .lineLimit(2)
+                            .minimumScaleFactor(0.7)
+                    }
 
                     Spacer()
 
@@ -167,11 +173,17 @@ private struct PoolColumn: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 5) {
-            Label(status.pool.name, systemImage: poolIcon(status.pool.type))
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundColor(.white)
-                .lineLimit(2)
-                .minimumScaleFactor(0.7)
+            HStack(alignment: .top, spacing: 5) {
+                Circle()
+                    .fill(status.isCurrentlyOpen ? Token.openColor : Token.closedColor)
+                    .frame(width: 8, height: 8)
+                    .padding(.top, 2)
+                Text(status.pool.name)
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundColor(.white)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.7)
+            }
 
             StatusBadge(isOpen: status.isCurrentlyOpen)
 
@@ -269,14 +281,13 @@ private struct HoursRowCompact: View {
 
     var body: some View {
         HStack(spacing: 2) {
-            // ── Session-type icon (Bug fix #3 iconography) ───────────────────
-            // Full public swimming: wave icon  /  Reduced area: half-drop icon
+            // ── Session-type icon: same symbol, green = full / amber = restricted ─
             if entry.activityType != nil {
-                Image(systemName: entry.hasReducedArea ? "drop.halffull" : "figure.pool.swim")
+                Image(systemName: "figure.pool.swim")
                     .font(.system(size: 7))
                     .foregroundColor(entry.hasReducedArea
-                                     ? Token.warningColor.opacity(0.8)
-                                     : Token.openColor.opacity(0.7))
+                                     ? Token.warningColor.opacity(0.9)
+                                     : Token.openColor.opacity(0.75))
             }
             Text(entry.dayLabel)
                 .foregroundColor(.white.opacity(0.55))
@@ -297,7 +308,7 @@ private struct CrowdBar: View {
 
     var body: some View {
         HStack(spacing: 2) {
-            Image(systemName: "person.2.fill")
+            Image(systemName: crowdPersonIcon(level))
                 .font(.system(size: 7))
                 .foregroundColor(crowdColor(level).opacity(0.8))
             ForEach(0..<segments, id: \.self) { i in
@@ -436,10 +447,10 @@ private struct AccessoryInlineView: View {
 
 // MARK: - Utilities
 
-private func poolIcon(_ type: Pool.PoolType) -> String {
-    switch type {
-    case .indoor:  return "building.2.fill"
-    case .outdoor: return "sun.max.fill"
-    case .lake:    return "water.waves"
+private func crowdPersonIcon(_ level: CrowdLevel) -> String {
+    switch level {
+    case .unknown, .notBusy:     return "person.fill"
+    case .slightlyBusy:          return "person.2.fill"
+    default:                     return "person.3.fill"
     }
 }

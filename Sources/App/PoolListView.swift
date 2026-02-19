@@ -68,19 +68,12 @@ private struct PoolRow: View {
     let pool: Pool
 
     var body: some View {
-        HStack(spacing: 12) {
-            Image(systemName: typeIcon(pool.type))
-                .font(.title2)
-                .foregroundColor(.blue)
-                .frame(width: 32)
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text(pool.name)
-                    .font(.body)
-                Text(pool.district)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
+        VStack(alignment: .leading, spacing: 2) {
+            Text(pool.name)
+                .font(.body)
+            Text(pool.district)
+                .font(.caption)
+                .foregroundColor(.secondary)
         }
         .padding(.vertical, 4)
     }
@@ -117,7 +110,7 @@ struct PoolDetailView: View {
             if let s = status, s.crowdLevel != .unknown {
                 Section("Auslastung") {
                     HStack(spacing: 10) {
-                        Image(systemName: "person.2.fill")
+                        Image(systemName: crowdPersonIcon(s.crowdLevel))
                             .foregroundColor(crowdColor(s.crowdLevel))
                         Text(s.crowdLevel.label)
                             .font(.body)
@@ -135,9 +128,7 @@ struct PoolDetailView: View {
                     ForEach(s.openingHours, id: \.dayLabel) { entry in
                         HStack {
                             // Session-type icon
-                            Image(systemName: entry.hasReducedArea
-                                             ? "drop.halffull"
-                                             : "figure.pool.swim")
+                            Image(systemName: "figure.pool.swim")
                                 .font(.footnote)
                                 .foregroundColor(entry.hasReducedArea ? .orange : .teal)
                                 .frame(width: 20)
@@ -249,11 +240,11 @@ private enum PoolTypeTab: String, CaseIterable, Identifiable {
     }
 }
 
-private func typeIcon(_ type: Pool.PoolType) -> String {
-    switch type {
-    case .indoor:  return "building.2.fill"
-    case .outdoor: return "sun.max.fill"
-    case .lake:    return "water.waves"
+private func crowdPersonIcon(_ level: CrowdLevel) -> String {
+    switch level {
+    case .unknown, .notBusy:  return "person.fill"
+    case .slightlyBusy:       return "person.2.fill"
+    default:                  return "person.3.fill"
     }
 }
 
