@@ -187,10 +187,13 @@ struct PoolEntry: TimelineEntry {
     let date: Date
     let statuses: [PoolStatus]
     let isPlaceholder: Bool
+    /// Mirrors the intent's showWarnings flag so views can suppress warning UI.
+    let showWarnings: Bool
 
-    init(date: Date, statuses: [PoolStatus], isPlaceholder: Bool = false) {
+    init(date: Date, statuses: [PoolStatus], isPlaceholder: Bool = false, showWarnings: Bool = true) {
         self.date          = date
         self.statuses      = statuses
         self.isPlaceholder = isPlaceholder
+        self.showWarnings  = showWarnings
     }
 }

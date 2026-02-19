@@ -268,7 +268,8 @@ actor BBBScraper {
         let dayMap: [(keywords: [String], weekdays: Set<Int>)] = [
             (["Mo–So", "Täglich", "täglich", "daily", "Mo-So", "Jeden Tag"], Set(1...7)),
             (["Mo–Fr", "Mo-Fr", "Montag–Freitag", "Montag-Freitag"],        Set(2...6)),
-            (["Sa–So", "Sa-So", "Wochenende"],                               [1, 7]),
+            (["Sa–So", "Sa-So", "Sa+So", "Wochenende"],                      [1, 7]),
+            (["Di+Do", "Di–Do", "Di-Do"],                                    [3, 5]),
             (["Montag", "Mo"],       [2]),
             (["Dienstag", "Di"],     [3]),
             (["Mittwoch", "Mi"],     [4]),

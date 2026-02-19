@@ -21,8 +21,12 @@ struct PoolWidgetProvider: AppIntentTimelineProvider {
     func snapshot(for configuration: PoolSelectionIntent,
                   in context: Context) async -> PoolEntry {
         let pools    = resolvePools(configuration, family: context.family)
-        let statuses = await fetchAll(pools: pools)
-        return PoolEntry(date: Date(), statuses: statuses)
+        var statuses = await fetchAll(pools: pools)
+        if !configuration.showClosedPools {
+            statuses = statuses.filter { $0.isCurrentlyOpen }
+        }
+        return PoolEntry(date: Date(), statuses: statuses,
+                         showWarnings: configuration.showWarnings)
     }
 
     // ── Timeline (drives live updates) ──────────────────────────────────────
@@ -30,9 +34,13 @@ struct PoolWidgetProvider: AppIntentTimelineProvider {
     func timeline(for configuration: PoolSelectionIntent,
                   in context: Context) async -> Timeline<PoolEntry> {
 
-        let pools    = resolvePools(configuration, family: context.family)
-        let statuses = await fetchAll(pools: pools)
-        let entry    = PoolEntry(date: Date(), statuses: statuses)
+        let pools        = resolvePools(configuration, family: context.family)
+        var statuses     = await fetchAll(pools: pools)
+        if !configuration.showClosedPools {
+            statuses = statuses.filter { $0.isCurrentlyOpen }
+        }
+        let entry = PoolEntry(date: Date(), statuses: statuses,
+                              showWarnings: configuration.showWarnings)
 
         // Refresh every 30 minutes (or immediately if no data came back).
         let nextRefresh = Calendar.current.date(byAdding: .minute,
@@ -47,7 +55,7 @@ struct PoolWidgetProvider: AppIntentTimelineProvider {
     private func maxPools(for family: WidgetFamily) -> Int {
         switch family {
         case .systemSmall:                    return 1
-        case .systemMedium:                   return 2
+        case .systemMedium:                   return 4   // two-line rows allow 3–4 pools
         case .systemLarge:                    return 4
         case .systemExtraLarge:               return 6
         case .accessoryCircular,

@@ -9,22 +9,25 @@ struct PoolWidgetEntryView: View {
     let entry: PoolEntry
 
     var body: some View {
-        switch family {
-        case .systemSmall:
-            SmallPoolView(status: entry.statuses.first, isPlaceholder: entry.isPlaceholder)
-        case .systemMedium:
-            MediumPoolView(statuses: entry.statuses, isPlaceholder: entry.isPlaceholder)
-        case .systemLarge:
-            LargePoolView(statuses: entry.statuses, isPlaceholder: entry.isPlaceholder)
-        case .accessoryCircular:
-            AccessoryCircularView(status: entry.statuses.first)
-        case .accessoryRectangular:
-            AccessoryRectangularView(status: entry.statuses.first)
-        case .accessoryInline:
-            AccessoryInlineView(status: entry.statuses.first)
-        default:
-            MediumPoolView(statuses: entry.statuses, isPlaceholder: entry.isPlaceholder)
+        Group {
+            switch family {
+            case .systemSmall:
+                SmallPoolView(status: entry.statuses.first, isPlaceholder: entry.isPlaceholder)
+            case .systemMedium:
+                MediumPoolView(statuses: entry.statuses, isPlaceholder: entry.isPlaceholder)
+            case .systemLarge:
+                LargePoolView(statuses: entry.statuses, isPlaceholder: entry.isPlaceholder)
+            case .accessoryCircular:
+                AccessoryCircularView(status: entry.statuses.first)
+            case .accessoryRectangular:
+                AccessoryRectangularView(status: entry.statuses.first)
+            case .accessoryInline:
+                AccessoryInlineView(status: entry.statuses.first)
+            default:
+                MediumPoolView(statuses: entry.statuses, isPlaceholder: entry.isPlaceholder)
+            }
         }
+        .environment(\.showWarnings, entry.showWarnings)
     }
 }
 
@@ -40,11 +43,22 @@ private enum Token {
     static let closedLabel: String = "Geschlossen"
 }
 
+// MARK: - Environment key for warning visibility
+
+private struct ShowWarningsKey: EnvironmentKey { static let defaultValue = true }
+extension EnvironmentValues {
+    fileprivate var showWarnings: Bool {
+        get { self[ShowWarningsKey.self] }
+        set { self[ShowWarningsKey.self] = newValue }
+    }
+}
+
 // MARK: - Small widget  (1 pool)
 
 private struct SmallPoolView: View {
     let status: PoolStatus?
     let isPlaceholder: Bool
+    @Environment(\.showWarnings) private var showWarnings
 
     var body: some View {
         ZStack {
@@ -84,7 +98,7 @@ private struct SmallPoolView: View {
                     }
 
                     // Warning indicator
-                    if s.hasWarning {
+                    if s.hasWarning && showWarnings {
                         WarningDot()
                     }
                 }
@@ -97,7 +111,7 @@ private struct SmallPoolView: View {
     }
 }
 
-// MARK: - Medium widget  (2 pools side-by-side)
+// MARK: - Medium widget  (3–4 pools, two-line rows)
 
 private struct MediumPoolView: View {
     let statuses: [PoolStatus]
@@ -106,20 +120,62 @@ private struct MediumPoolView: View {
     var body: some View {
         ZStack {
             Token.bgColor.ignoresSafeArea()
-            HStack(spacing: 0) {
-                ForEach(Array(statuses.prefix(2).enumerated()), id: \.offset) { index, s in
-                    PoolColumn(status: s)
-                    if index < min(statuses.count, 2) - 1 {
-                        Divider().background(Color.white.opacity(0.15))
+            VStack(alignment: .leading, spacing: 0) {
+                ForEach(Array(statuses.prefix(4).enumerated()), id: \.offset) { index, s in
+                    MediumPoolRow(status: s)
+                    if index < min(statuses.count, 4) - 1 {
+                        Divider()
+                            .background(Color.white.opacity(0.12))
+                            .padding(.horizontal, 2)
                     }
                 }
-                if statuses.count < 2 {
-                    Spacer()
-                }
+                Spacer(minLength: 0)
             }
             .padding(12)
         }
         .redacted(reason: isPlaceholder ? .placeholder : [])
+    }
+}
+
+private struct MediumPoolRow: View {
+    let status: PoolStatus
+    @Environment(\.showWarnings) private var showWarnings
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            // ── Row 1: status dot · name · (warning icon) · crowd bar ─────────
+            HStack(spacing: 5) {
+                Circle()
+                    .fill(status.isCurrentlyOpen ? Token.openColor : Token.closedColor)
+                    .frame(width: 7, height: 7)
+                Text(status.pool.name)
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundColor(.white)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+                if showWarnings && status.hasWarning {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .font(.system(size: 8))
+                        .foregroundColor(Token.warningColor)
+                }
+                Spacer()
+                if status.crowdLevel != .unknown {
+                    CrowdBar(level: status.crowdLevel)
+                }
+            }
+
+            // ── Row 2: Today + Tomorrow hours ─────────────────────────────────
+            HStack(spacing: 6) {
+                Text(dayHoursLabel(status.openingHours, offset: 0))
+                Text("·")
+                    .foregroundColor(.white.opacity(0.25))
+                Text(dayHoursLabel(status.openingHours, offset: 1))
+            }
+            .font(.system(size: 9, design: .monospaced))
+            .foregroundColor(.white.opacity(0.60))
+            .lineLimit(1)
+        }
+        .padding(.vertical, 5)
     }
 }
 
@@ -168,57 +224,9 @@ private struct LargePoolView: View {
 
 // MARK: - Reusable sub-views
 
-private struct PoolColumn: View {
-    let status: PoolStatus
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 5) {
-            HStack(alignment: .top, spacing: 5) {
-                Circle()
-                    .fill(status.isCurrentlyOpen ? Token.openColor : Token.closedColor)
-                    .frame(width: 8, height: 8)
-                    .padding(.top, 2)
-                Text(status.pool.name)
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundColor(.white)
-                    .lineLimit(2)
-                    .minimumScaleFactor(0.7)
-            }
-
-            StatusBadge(isOpen: status.isCurrentlyOpen)
-
-            if let hours = status.todayHours {
-                Text(hours)
-                    .font(.system(size: 10, design: .monospaced))
-                    .foregroundColor(.white.opacity(0.75))
-                    .lineLimit(1)
-            }
-
-            if !status.openingHours.isEmpty {
-                VStack(alignment: .leading, spacing: 2) {
-                    ForEach(status.openingHours.prefix(4), id: \.dayLabel) { entry in
-                        HoursRowCompact(entry: entry)
-                    }
-                }
-            }
-
-            if status.crowdLevel != .unknown {
-                CrowdBar(level: status.crowdLevel)
-                    .padding(.top, 2)
-            }
-
-            if status.hasWarning {
-                WarningDot(label: status.warnings.first)
-            }
-            Spacer()
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 10)
-    }
-}
-
 private struct PoolRow: View {
     let status: PoolStatus
+    @Environment(\.showWarnings) private var showWarnings
 
     var body: some View {
         HStack(alignment: .top, spacing: 10) {
@@ -235,7 +243,7 @@ private struct PoolRow: View {
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundColor(.white)
                         .lineLimit(1)
-                    if status.hasWarning {
+                    if showWarnings && status.hasWarning {
                         Image(systemName: "exclamationmark.triangle.fill")
                             .font(.system(size: 10))
                             .foregroundColor(Token.warningColor)
@@ -263,7 +271,7 @@ private struct PoolRow: View {
                 }
 
                 // First warning text (truncated)
-                if let warning = status.warnings.first {
+                if showWarnings, let warning = status.warnings.first {
                     Text(warning)
                         .font(.system(size: 9))
                         .foregroundColor(Token.warningColor)
@@ -453,4 +461,50 @@ private func crowdPersonIcon(_ level: CrowdLevel) -> String {
     case .slightlyBusy:          return "person.2.fill"
     default:                     return "person.3.fill"
     }
+}
+
+/// Returns "Mo 12:00–22:30" (abbreviated German day + hours) for today + `offset` days.
+/// Multiple public slots in the same day are joined with ", ".
+/// Strictly excludes entries already filtered out by `isPublicSwimming`.
+private func dayHoursLabel(_ entries: [OpeningHoursEntry], offset: Int) -> String {
+    var cal = Calendar(identifier: .gregorian)
+    cal.timeZone = TimeZone(identifier: "Europe/Berlin") ?? .current
+    guard let target = cal.date(byAdding: .day, value: offset, to: Date()) else { return "–" }
+    let weekday = cal.component(.weekday, from: target) // 1=Sun, 2=Mon…7=Sat
+
+    let abbrevs: [Int: String] = [1:"So", 2:"Mo", 3:"Di", 4:"Mi", 5:"Do", 6:"Fr", 7:"Sa"]
+    let abbrev = abbrevs[weekday] ?? "–"
+
+    if entries.isEmpty { return "\(abbrev) –" }
+
+    let matching = entries.filter { matchesWeekday($0.dayLabel, weekday: weekday) }
+    let times = matching.compactMap { e -> String? in
+        let h = e.hours
+            .replacingOccurrences(of: " Uhr", with: "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        return h.lowercased().contains("geschlossen") || h.isEmpty ? nil : h
+    }
+    if times.isEmpty { return "\(abbrev) –" }
+    return "\(abbrev) \(times.joined(separator: ", "))"
+}
+
+private func matchesWeekday(_ dayLabel: String, weekday: Int) -> Bool {
+    let label = dayLabel.lowercased()
+    let map: [(words: [String], days: Set<Int>)] = [
+        (["mo–so", "mo-so", "täglich", "daily", "jeden tag"],      Set(1...7)),
+        (["mo–fr", "mo-fr", "montag–freitag", "montag-freitag"],   Set(2...6)),
+        (["sa–so", "sa-so", "wochenende"],                         [1, 7]),
+        (["montag",    "mo"],  [2]),
+        (["dienstag",  "di"],  [3]),
+        (["mittwoch",  "mi"],  [4]),
+        (["donnerstag","do"],  [5]),
+        (["freitag",   "fr"],  [6]),
+        (["samstag",   "sa"],  [7]),
+        (["sonntag",   "so"],  [1]),
+    ]
+    for entry in map {
+        if entry.days.contains(weekday),
+           entry.words.contains(where: { label.contains($0) }) { return true }
+    }
+    return false
 }

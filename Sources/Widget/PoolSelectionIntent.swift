@@ -69,4 +69,12 @@ struct PoolSelectionIntent: WidgetConfigurationIntent {
     /// The widget engine will clamp the array to what fits in the chosen widget size.
     @Parameter(title: "Bäder", default: [])
     var pools: [PoolEntity]
+
+    /// When disabled, pools that are currently closed are hidden from the widget.
+    @Parameter(title: "Geschlossene Bäder anzeigen", default: true)
+    var showClosedPools: Bool
+
+    /// When disabled, warning badges and closure notices are suppressed.
+    @Parameter(title: "Warnungen anzeigen", default: true)
+    var showWarnings: Bool
 }

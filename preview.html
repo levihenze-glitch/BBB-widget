@@ -13,7 +13,7 @@
       background: #1c1c1e;
       color: #fff;
       min-height: 100vh;
-      padding: 40px 24px 80px;
+      padding: 40px 260px 80px 24px;
     }
 
     h1 { font-size: 22px; font-weight: 700; letter-spacing: -0.4px; margin-bottom: 4px; }
@@ -36,7 +36,7 @@
 
     /* iOS widget sizes */
     .widget-small  { width: 169px; height: 169px; padding: 14px; }
-    .widget-medium { width: 360px; height: 169px; padding: 14px; display: flex; gap: 0; }
+    .widget-medium { width: 360px; height: 169px; padding: 10px 12px; display: flex; flex-direction: column; }
     .widget-large  { width: 360px; height: 379px; }
 
     /* ── Design tokens ────────────────────────────────────────── */
@@ -120,24 +120,72 @@
     .small-warning { margin-top: 5px; }
 
     /* ──────────────────────────────────────────────────────────
-       MEDIUM WIDGET  (two columns)
+       MEDIUM WIDGET  (3–4 two-line pool rows)
     ────────────────────────────────────────────────────────── */
-    .medium-col {
-      flex: 1; display: flex; flex-direction: column; gap: 4px;
-      min-width: 0; padding: 0 4px;
+    .medium-pool-row {
+      display: flex; flex-direction: column; gap: 2px; padding: 4px 0;
     }
-    .medium-col + .medium-col {
-      border-left: 1px solid rgba(255,255,255,0.10); padding-left: 14px;
+    .medium-pool-row + .medium-pool-row {
+      border-top: 1px solid rgba(255,255,255,0.08);
     }
-    .col-name {
-      font-size: 11px; font-weight: 600; line-height: 1.3;
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    .mpr-top {
       display: flex; align-items: center; gap: 5px;
     }
-    .col-hours-list { display: flex; flex-direction: column; gap: 3px; margin-top: 3px; }
+    .mpr-name {
+      font-size: 11px; font-weight: 600;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      flex: 1; min-width: 0;
+    }
+    .mpr-hours {
+      font-size: 9px; font-family: "SF Mono", "Menlo", monospace;
+      color: rgba(255,255,255,0.60); display: flex; gap: 5px;
+      padding-left: 12px; /* indent under the status circle */
+    }
+    .mpr-sep { color: rgba(255,255,255,0.20); }
+    /* kept for large-widget usage */
     .hours-row { display: flex; gap: 5px; font-size: 9px; font-family: "SF Mono", "Menlo", monospace; }
     .hours-day  { color: var(--muted); width: 36px; flex-shrink: 0; }
     .hours-time { color: rgba(255,255,255,0.85); }
+
+    /* ──────────────────────────────────────────────────────────
+       OPTIONS SIDEBAR
+    ────────────────────────────────────────────────────────── */
+    .opt-panel {
+      position: fixed; top: 40px; right: 16px;
+      width: 220px; background: #2c2c2e; border-radius: 18px;
+      padding: 16px; display: flex; flex-direction: column; gap: 0;
+      z-index: 100; max-height: calc(100vh - 60px); overflow-y: auto;
+    }
+    .opt-panel-title {
+      font-size: 13px; font-weight: 700; margin-bottom: 12px;
+    }
+    .opt-section-label {
+      font-size: 10px; font-weight: 600; letter-spacing: 0.6px;
+      text-transform: uppercase; color: #636366;
+      margin: 10px 0 6px;
+    }
+    .opt-section-label:first-of-type { margin-top: 0; }
+    .opt-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 5px 0; gap: 8px;
+    }
+    .opt-row-label { font-size: 12px; color: rgba(255,255,255,0.85); flex: 1; }
+    /* iOS-style toggle switch */
+    .opt-switch { position: relative; display: inline-block; width: 38px; height: 22px; flex-shrink: 0; }
+    .opt-switch input { opacity: 0; width: 0; height: 0; }
+    .opt-slider {
+      position: absolute; cursor: pointer; inset: 0;
+      background: rgba(255,255,255,0.18); border-radius: 22px;
+      transition: background 0.2s;
+    }
+    .opt-slider::before {
+      position: absolute; content: ""; height: 18px; width: 18px;
+      left: 2px; top: 2px; background: #fff; border-radius: 50%;
+      transition: transform 0.2s;
+    }
+    .opt-switch input:checked + .opt-slider { background: var(--open); }
+    .opt-switch input:checked + .opt-slider::before { transform: translateX(16px); }
+    .opt-divider { height: 1px; background: rgba(255,255,255,0.07); margin: 4px 0; }
 
     /* ──────────────────────────────────────────────────────────
        LARGE WIDGET
@@ -197,22 +245,64 @@
     }
     .accessory-inline-label { font-size: 10px; color: #8e8e93; margin-top: 5px; }
 
-    /* ── Toggle controls ──────────────────────────────────────── */
-    .controls {
-      position: fixed; bottom: 20px; right: 20px; display: flex; gap: 8px;
-    }
-    .ctrl-btn {
-      padding: 8px 14px; border-radius: 99px; border: none;
-      background: rgba(255,255,255,0.12); color: #fff;
-      font-size: 12px; font-weight: 600; cursor: pointer; transition: background 0.15s;
-    }
-    .ctrl-btn:hover  { background: rgba(255,255,255,0.22); }
-    .ctrl-btn.active { background: var(--open); }
-
     .hidden { display: none !important; }
   </style>
 </head>
 <body>
+
+  <!-- ═══════════════════════════════════════════════════════
+       OPTIONS SIDEBAR  (fixed right panel)
+  ══════════════════════════════════════════════════════════ -->
+  <aside class="opt-panel">
+    <div class="opt-panel-title">⚙ Widget-Optionen</div>
+
+    <div class="opt-section-label">Anzeige</div>
+    <div class="opt-row">
+      <span class="opt-row-label">Geschlossene anzeigen</span>
+      <label class="opt-switch">
+        <input type="checkbox" id="opt-closed" checked>
+        <span class="opt-slider"></span>
+      </label>
+    </div>
+    <div class="opt-row">
+      <span class="opt-row-label">Warnungen anzeigen</span>
+      <label class="opt-switch">
+        <input type="checkbox" id="opt-warnings" checked>
+        <span class="opt-slider"></span>
+      </label>
+    </div>
+
+    <div class="opt-divider"></div>
+    <div class="opt-section-label">Bäder (Medium-Widget)</div>
+    <div class="opt-row">
+      <span class="opt-row-label">SSE Europasportpark</span>
+      <label class="opt-switch">
+        <input type="checkbox" id="opt-pool-sse" checked>
+        <span class="opt-slider"></span>
+      </label>
+    </div>
+    <div class="opt-row">
+      <span class="opt-row-label">Stadtbad Mitte</span>
+      <label class="opt-switch">
+        <input type="checkbox" id="opt-pool-mitte" checked>
+        <span class="opt-slider"></span>
+      </label>
+    </div>
+    <div class="opt-row">
+      <span class="opt-row-label">Stadtbad Neukölln</span>
+      <label class="opt-switch">
+        <input type="checkbox" id="opt-pool-neukoelln" checked>
+        <span class="opt-slider"></span>
+      </label>
+    </div>
+    <div class="opt-row">
+      <span class="opt-row-label">Sommerbad Kreuzberg</span>
+      <label class="opt-switch">
+        <input type="checkbox" id="opt-pool-kreuzberg" checked>
+        <span class="opt-slider"></span>
+      </label>
+    </div>
+  </aside>
 
   <h1>🏊 Berliner Bäder Widget</h1>
   <p class="subtitle">Live-Mockup · Öffnungsstatus wird aus Berliner Zeit berechnet</p>
@@ -307,110 +397,95 @@
   <!-- ═══════════════════════════════════════════════════════
        MEDIUM
   ══════════════════════════════════════════════════════════ -->
-  <div class="section-label">Medium &nbsp;·&nbsp; 2 Bäder</div>
+  <div class="section-label">Medium &nbsp;·&nbsp; bis zu 4 Bäder</div>
   <div class="row">
 
-    <!-- Medium – SSE + Stadtbad Mitte, both open -->
+    <!-- Medium – 4 pools, two-line rows (status · name · crowd / today · tomorrow) -->
     <div class="widget widget-medium">
-      <div class="medium-col">
-        <div class="col-name"><span class="status-circle open"></span> SSE Europasportpark</div>
-        <span class="badge open"><span class="dot"></span>Geöffnet</span>
-        <div class="col-hours-list">
-          <!-- öffentl. Schwimmen full pool -->
-          <div class="hours-row">
-            <span class="session-icon full" title="öffentl. Schwimmen">●</span>
-            <span class="hours-day">Mo–Fr</span><span class="hours-time">06:30–22:00</span>
-          </div>
-          <div class="hours-row">
-            <span class="session-icon full" title="öffentl. Schwimmen">●</span>
-            <span class="hours-day">Sa</span><span class="hours-time">08:00–20:00</span>
-          </div>
-          <div class="hours-row">
-            <span class="session-icon full" title="öffentl. Schwimmen">●</span>
-            <span class="hours-day">So</span><span class="hours-time">08:00–18:00</span>
-          </div>
-        </div>
-        <div class="crowd-bar">
-          <span class="crowd-bar-icon">👥</span>
-          <div class="crowd-segments">
-            <div class="crowd-seg filled-low"></div>
-            <div class="crowd-seg filled-low"></div>
-            <div class="crowd-seg filled-mid"></div>
-            <div class="crowd-seg"></div>
-            <div class="crowd-seg"></div>
-          </div>
-          <span class="crowd-label">Mäßig</span>
-        </div>
-      </div>
-      <div class="medium-col">
-        <div class="col-name"><span class="status-circle open"></span> Stadtbad Mitte</div>
-        <span class="badge open"><span class="dot"></span>Geöffnet</span>
-        <div class="col-hours-list">
-          <div class="hours-row">
-            <span class="session-icon full" title="öffentl. Schwimmen">●</span>
-            <span class="hours-day">Mo–Fr</span><span class="hours-time">06:30–22:00</span>
-          </div>
-          <div class="hours-row">
-            <!-- eingeschränkte Wasserfläche -->
-            <span class="session-icon reduced" title="öffentl. Schwimmen mit eingeschränkter Wasserfläche">●</span>
-            <span class="hours-day">Sa</span><span class="hours-time">08:00–20:00</span>
-          </div>
-          <div class="hours-row">
-            <span class="session-icon full" title="öffentl. Schwimmen">●</span>
-            <span class="hours-day">So</span><span class="hours-time">10:00–18:00</span>
-          </div>
-        </div>
-        <div class="crowd-bar">
-          <span class="crowd-bar-icon">👥</span>
-          <div class="crowd-segments">
-            <div class="crowd-seg filled-low"></div>
-            <div class="crowd-seg filled-low"></div>
-            <div class="crowd-seg"></div>
-            <div class="crowd-seg"></div>
-            <div class="crowd-seg"></div>
-          </div>
-          <span class="crowd-label">Wenig</span>
-        </div>
-      </div>
-    </div>
 
-    <!-- Medium – Neukölln + Kreuzberg (closed/off-season) -->
-    <div class="widget widget-medium">
-      <div class="medium-col">
-        <div class="col-name"><span class="status-circle open"></span> Stadtbad Neukölln</div>
-        <span class="badge open"><span class="dot"></span>Geöffnet</span>
-        <div class="col-hours-list">
-          <div class="hours-row">
-            <span class="session-icon full" title="öffentl. Schwimmen">●</span>
-            <span class="hours-day">Mo–Fr</span><span class="hours-time">07:00–21:30</span>
-          </div>
-          <div class="hours-row">
-            <span class="session-icon reduced" title="öffentl. Schwimmen eingeschr.">◑</span>
-            <span class="hours-day">Sa–So</span><span class="hours-time">08:00–18:00</span>
+      <!-- SSE Europasportpark – open, mäßig belebt -->
+      <div class="medium-pool-row" id="mpr-sse" data-pool="sse" data-open="true">
+        <div class="mpr-top">
+          <span class="status-circle open"></span>
+          <span class="mpr-name">SSE Europasportpark</span>
+          <div class="crowd-bar" style="margin-top:0">
+            <span class="crowd-bar-icon">👤</span>
+            <div class="crowd-segments">
+              <div class="crowd-seg filled-low"></div>
+              <div class="crowd-seg filled-low"></div>
+              <div class="crowd-seg filled-mid"></div>
+              <div class="crowd-seg"></div>
+              <div class="crowd-seg"></div>
+            </div>
           </div>
         </div>
-        <div class="crowd-bar">
-          <span class="crowd-bar-icon">👥</span>
-          <div class="crowd-segments">
-            <div class="crowd-seg filled-high"></div>
-            <div class="crowd-seg filled-high"></div>
-            <div class="crowd-seg filled-high"></div>
-            <div class="crowd-seg filled-high"></div>
-            <div class="crowd-seg"></div>
-          </div>
-          <span class="crowd-label">Belebt</span>
+        <div class="mpr-hours">
+          <span class="mpr-today js-mpr-today"></span>
+          <span class="mpr-sep">·</span>
+          <span class="mpr-tomorrow js-mpr-tomorrow"></span>
         </div>
       </div>
-      <div class="medium-col">
-        <div class="col-name"><span class="status-circle closed"></span> Sommerbad Kreuzberg</div>
-        <!-- Kreuzberg: no hours on website → closed off-season -->
-        <span class="badge closed"><span class="dot"></span>Geschlossen</span>
-        <div class="col-hours-list" style="margin-top:4px">
-          <div class="hours-row" style="color:var(--muted); font-size:8px;">Keine Öffnungszeiten hinterlegt</div>
+
+      <!-- Stadtbad Mitte – open, wenig belebt, warning -->
+      <div class="medium-pool-row" id="mpr-mitte" data-pool="mitte" data-open="true">
+        <div class="mpr-top">
+          <span class="status-circle open"></span>
+          <span class="mpr-name">Stadtbad Mitte</span>
+          <span class="warning-tag" style="font-size:8px;margin-right:3px">⚠️</span>
+          <div class="crowd-bar" style="margin-top:0">
+            <span class="crowd-bar-icon">👤</span>
+            <div class="crowd-segments">
+              <div class="crowd-seg filled-low"></div>
+              <div class="crowd-seg filled-low"></div>
+              <div class="crowd-seg"></div>
+              <div class="crowd-seg"></div>
+              <div class="crowd-seg"></div>
+            </div>
+          </div>
         </div>
-        <div class="warning-tag" style="margin-top:6px">⚠️ Außerhalb der Saison</div>
+        <div class="mpr-hours">
+          <span class="mpr-today js-mpr-today"></span>
+          <span class="mpr-sep">·</span>
+          <span class="mpr-tomorrow js-mpr-tomorrow"></span>
+        </div>
       </div>
-    </div>
+
+      <!-- Stadtbad Neukölln – open, belebt -->
+      <div class="medium-pool-row" id="mpr-neukoelln" data-pool="neukoelln" data-open="true">
+        <div class="mpr-top">
+          <span class="status-circle open"></span>
+          <span class="mpr-name">Stadtbad Neukölln</span>
+          <div class="crowd-bar" style="margin-top:0">
+            <span class="crowd-bar-icon">👥</span>
+            <div class="crowd-segments">
+              <div class="crowd-seg filled-high"></div>
+              <div class="crowd-seg filled-high"></div>
+              <div class="crowd-seg filled-high"></div>
+              <div class="crowd-seg filled-high"></div>
+              <div class="crowd-seg"></div>
+            </div>
+          </div>
+        </div>
+        <div class="mpr-hours">
+          <span class="mpr-today js-mpr-today"></span>
+          <span class="mpr-sep">·</span>
+          <span class="mpr-tomorrow js-mpr-tomorrow"></span>
+        </div>
+      </div>
+
+      <!-- Sommerbad Kreuzberg – closed / off-season -->
+      <div class="medium-pool-row" id="mpr-kreuzberg" data-pool="kreuzberg" data-open="false">
+        <div class="mpr-top">
+          <span class="status-circle closed"></span>
+          <span class="mpr-name">Sommerbad Kreuzberg</span>
+          <span class="warning-tag" style="font-size:8px; margin-left:auto">⚠️ Saison</span>
+        </div>
+        <div class="mpr-hours" style="color:var(--muted)">
+          Keine Öffnungszeiten · außerhalb der Badesaison
+        </div>
+      </div>
+
+    </div><!-- /widget-medium -->
 
   </div><!-- /row medium -->
 
@@ -479,7 +554,7 @@
           </div>
         </div>
 
-        <!-- Row 3 – Stadtbad Neukölln, open, belebt -->
+        <!-- Row 3 – Stadtbad Neukölln, open, belebt – per-day hours (source: berlinerbaeder.de) -->
         <div class="large-row">
           <div class="status-dot open"></div>
           <div class="large-row-body">
@@ -490,11 +565,23 @@
             <div class="large-row-hours">
               <div class="hours-row">
                 <span class="session-icon full">●</span>
-                <span class="hours-day">Mo–Fr</span><span class="hours-time">07:00–21:30</span>
+                <span class="hours-day">Mo</span><span class="hours-time">12:00–22:30</span>
               </div>
               <div class="hours-row">
-                <span class="session-icon reduced">●</span>
-                <span class="hours-day">Sa–So</span><span class="hours-time">08:00–18:00</span>
+                <span class="session-icon full">●</span>
+                <span class="hours-day">Di+Do</span><span class="hours-time">14:00–22:30</span>
+              </div>
+              <div class="hours-row">
+                <span class="session-icon full">●</span>
+                <span class="hours-day">Mi</span><span class="hours-time">11:00–22:30</span>
+              </div>
+              <div class="hours-row">
+                <span class="session-icon full">●</span>
+                <span class="hours-day">Fr</span><span class="hours-time">13:00–22:30</span>
+              </div>
+              <div class="hours-row">
+                <span class="session-icon full">●</span>
+                <span class="hours-day">Sa+So</span><span class="hours-time">10:00–22:30</span>
               </div>
             </div>
           </div>
@@ -589,13 +676,6 @@
   </div><!-- /lockscreen-row -->
 
 
-  <!-- ═══════════════════════════════════════════════════════
-       TOGGLE CONTROLS
-  ══════════════════════════════════════════════════════════ -->
-  <div class="controls">
-    <button class="ctrl-btn" id="btn-warning" onclick="toggleWarning()">⚠️ Warnung</button>
-  </div>
-
   <script>
     // ── Live clock (Berlin time) ───────────────────────────────────────────
     function berlinTime() {
@@ -672,15 +752,83 @@
       }
     });
 
-    // ── Warning toggle ─────────────────────────────────────────────────────
-    let warningVisible = true;
-    function toggleWarning() {
-      warningVisible = !warningVisible;
-      document.getElementById('btn-warning').classList.toggle('active', warningVisible);
-      document.querySelectorAll('.warning-tag, .large-row-warning').forEach(el => {
-        el.classList.toggle('hidden', !warningVisible);
+    // ── Pool hours data (for medium widget today/tomorrow computation) ─────
+    // Keyed by data-pool attribute on .medium-pool-row elements.
+    const poolHours = {
+      sse: {
+        moFr: '06:30–22:00', sa: '08:00–20:00', so: '08:00–18:00'
+      },
+      mitte: {
+        moFr: '06:30–22:00', sa: '08:00–20:00', so: '10:00–18:00'
+      },
+      neukoelln: {
+        // Individual-day schedule (correct per berlinerbaeder.de)
+        mo: '12:00–22:30', di: '14:00–22:30', mi: '11:00–22:30',
+        do: '14:00–22:30', fr: '13:00–22:30', sa: '10:00–22:30', so: '10:00–22:30'
+      },
+      kreuzberg: {} // no hours (off-season)
+    };
+
+    const DAY_ABBREVS = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
+    const DAY_KEYS    = ['so', 'mo', 'di', 'mi', 'do', 'fr', 'sa'];
+
+    function getDayHours(poolKey, date) {
+      const data = poolHours[poolKey];
+      if (!data) return null;
+      const dow  = date.getDay(); // 0=Sun…6=Sat
+      const abbr = DAY_ABBREVS[dow];
+      const key  = DAY_KEYS[dow];
+      // Individual-day key takes priority; fallback to moFr range
+      const hours = data[key] || (dow >= 1 && dow <= 5 ? data.moFr : null);
+      if (!hours) return abbr + ' –';
+      return abbr + '\u00a0' + hours; // non-breaking space for monospace alignment
+    }
+
+    function updateMediumHours() {
+      const now = berlinTime();
+      const tom = new Date(now); tom.setDate(tom.getDate() + 1);
+      document.querySelectorAll('.medium-pool-row[data-pool]').forEach(row => {
+        const key = row.dataset.pool;
+        const todayEl    = row.querySelector('.js-mpr-today');
+        const tomorrowEl = row.querySelector('.js-mpr-tomorrow');
+        if (todayEl)    todayEl.textContent    = getDayHours(key, now) || '–';
+        if (tomorrowEl) tomorrowEl.textContent = getDayHours(key, tom) || '–';
       });
     }
+    updateMediumHours();
+
+    // ── Option: show/hide closed pools ─────────────────────────────────────
+    document.getElementById('opt-closed').addEventListener('change', function () {
+      const show = this.checked;
+      // Medium widget rows
+      document.querySelectorAll('.medium-pool-row[data-open="false"]').forEach(r => {
+        r.style.display = show ? '' : 'none';
+      });
+      // Small widgets that are hard-coded closed (have .closed badge but no data-hours)
+      document.querySelectorAll('.widget-small').forEach(w => {
+        const badge = w.querySelector('.badge.closed:not(.js-badge)');
+        if (badge) w.style.display = show ? '' : 'none';
+      });
+    });
+
+    // ── Option: show/hide warnings ─────────────────────────────────────────
+    document.getElementById('opt-warnings').addEventListener('change', function () {
+      const show = this.checked;
+      document.querySelectorAll('.warning-tag, .large-row-warning').forEach(el => {
+        el.style.display = show ? '' : 'none';
+      });
+    });
+
+    // ── Option: per-pool visibility in medium widget ────────────────────────
+    [['sse','mpr-sse'], ['mitte','mpr-mitte'],
+     ['neukoelln','mpr-neukoelln'], ['kreuzberg','mpr-kreuzberg']].forEach(([key, id]) => {
+      const cb = document.getElementById('opt-pool-' + key);
+      if (!cb) return;
+      cb.addEventListener('change', function () {
+        const row = document.getElementById(id);
+        if (row) row.style.display = this.checked ? '' : 'none';
+      });
+    });
   </script>
 
 </body>
