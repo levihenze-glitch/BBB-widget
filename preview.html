@@ -187,6 +187,21 @@
     .opt-switch input:checked + .opt-slider::before { transform: translateX(16px); }
     .opt-divider { height: 1px; background: rgba(255,255,255,0.07); margin: 4px 0; }
 
+    /* Scrollable pool list inside the sidebar */
+    .opt-pool-list {
+      overflow-y: auto;
+      max-height: min(260px, calc(100vh - 240px));
+      margin: 0 -4px;
+      padding: 0 4px 4px;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(255,255,255,0.15) transparent;
+    }
+    .opt-type-header {
+      font-size: 9px; font-weight: 600; letter-spacing: 0.5px;
+      text-transform: uppercase; color: #48484a; padding: 8px 0 3px;
+    }
+    .opt-pool-district { font-size: 10px; color: #636366; line-height: 1.2; margin-top: 1px; }
+
     /* ──────────────────────────────────────────────────────────
        LARGE WIDGET
     ────────────────────────────────────────────────────────── */
@@ -273,35 +288,8 @@
     </div>
 
     <div class="opt-divider"></div>
-    <div class="opt-section-label">Bäder (Medium-Widget)</div>
-    <div class="opt-row">
-      <span class="opt-row-label">SSE Europasportpark</span>
-      <label class="opt-switch">
-        <input type="checkbox" id="opt-pool-sse" checked>
-        <span class="opt-slider"></span>
-      </label>
-    </div>
-    <div class="opt-row">
-      <span class="opt-row-label">Stadtbad Mitte</span>
-      <label class="opt-switch">
-        <input type="checkbox" id="opt-pool-mitte" checked>
-        <span class="opt-slider"></span>
-      </label>
-    </div>
-    <div class="opt-row">
-      <span class="opt-row-label">Stadtbad Neukölln</span>
-      <label class="opt-switch">
-        <input type="checkbox" id="opt-pool-neukoelln" checked>
-        <span class="opt-slider"></span>
-      </label>
-    </div>
-    <div class="opt-row">
-      <span class="opt-row-label">Sommerbad Kreuzberg</span>
-      <label class="opt-switch">
-        <input type="checkbox" id="opt-pool-kreuzberg" checked>
-        <span class="opt-slider"></span>
-      </label>
-    </div>
+    <div class="opt-section-label">Bäder auswählen &nbsp;·&nbsp; max. 4</div>
+    <div class="opt-pool-list" id="opt-pool-list"></div>
   </aside>
 
   <h1>🏊 Berliner Bäder Widget</h1>
@@ -819,15 +807,87 @@
       });
     });
 
-    // ── Option: per-pool visibility in medium widget ────────────────────────
-    [['sse','mpr-sse'], ['mitte','mpr-mitte'],
-     ['neukoelln','mpr-neukoelln'], ['kreuzberg','mpr-kreuzberg']].forEach(([key, id]) => {
-      const cb = document.getElementById('opt-pool-' + key);
-      if (!cb) return;
-      cb.addEventListener('change', function () {
-        const row = document.getElementById(id);
-        if (row) row.style.display = this.checked ? '' : 'none';
-      });
+    // ── All pools – mirrors Pool.allPools in Swift ─────────────────────────
+    const allPools = [
+      // Hallenbäder
+      { id: 'sse',                           name: 'SSE Europasportpark',             district: 'Prenzlauer Berg',    type: 'indoor'  },
+      { id: 'stadtbad-mitte',                name: 'Stadtbad Mitte',                  district: 'Mitte',              type: 'indoor'  },
+      { id: 'ernst-thaelmann',               name: 'Schwimmhalle Ernst-Thälmann-Park',district: 'Prenzlauer Berg',    type: 'indoor'  },
+      { id: 'helene-weigel',                 name: 'Schwimmhalle Helene-Weigel-Platz',district: 'Marzahn',            type: 'indoor'  },
+      { id: 'kleine-wuhlheide',              name: 'Kleine Schwimmhalle Wuhlheide',   district: 'Köpenick',           type: 'indoor'  },
+      { id: 'stadtbad-charlottenburg',       name: 'Stadtbad Charlottenburg',         district: 'Charlottenburg',     type: 'indoor'  },
+      { id: 'stadtbad-neukoelln',            name: 'Stadtbad Neukölln',               district: 'Neukölln',           type: 'indoor'  },
+      { id: 'stadtbad-spandau',              name: 'Stadtbad Spandau',                district: 'Spandau',            type: 'indoor'  },
+      { id: 'stadtbad-tempelhof',            name: 'Stadtbad Tempelhof',              district: 'Tempelhof',          type: 'indoor'  },
+      { id: 'stadtbad-zehlendorf',           name: 'Stadtbad Zehlendorf',             district: 'Zehlendorf',         type: 'indoor'  },
+      { id: 'stadtbad-lankwitz',             name: 'Stadtbad Lankwitz',               district: 'Lankwitz',           type: 'indoor'  },
+      { id: 'stadtbad-schoeneberg',          name: 'Stadtbad Schöneberg',             district: 'Schöneberg',         type: 'indoor'  },
+      { id: 'schwimmhalle-buch',             name: 'Schwimmhalle Buch',               district: 'Buch',               type: 'indoor'  },
+      { id: 'schwimmhalle-pankow',           name: 'Schwimmhalle Pankow',             district: 'Pankow',             type: 'indoor'  },
+      { id: 'schwimmhalle-finckensteinallee',name: 'Schwimmhalle Finckensteinallee',  district: 'Lichterfelde',       type: 'indoor'  },
+      { id: 'schwimmhalle-mariendorf',       name: 'Schwimmhalle Mariendorf',         district: 'Mariendorf',         type: 'indoor'  },
+      { id: 'schwimmhalle-hohenschoenhausen',name: 'Schwimmhalle Hohenschönhausen',   district: 'Hohenschönhausen',   type: 'indoor'  },
+      { id: 'schwimmhalle-kaulsdorf',        name: 'Schwimmhalle Kaulsdorf',          district: 'Kaulsdorf',          type: 'indoor'  },
+      { id: 'schwimmhalle-wilmersdorf',      name: 'Schwimmhalle Wilmersdorf',        district: 'Wilmersdorf',        type: 'indoor'  },
+      // Sommerbäder
+      { id: 'sommerbad-olympiastadion',      name: 'Sommerbad Olympiastadion',        district: 'Charlottenburg',     type: 'outdoor' },
+      { id: 'sommerbad-wuhlheide',           name: 'Sommerbad Wuhlheide',             district: 'Köpenick',           type: 'outdoor' },
+      { id: 'sommerbad-kreuzberg',           name: 'Sommerbad Kreuzberg',             district: 'Kreuzberg',          type: 'outdoor' },
+      { id: 'sommerbad-wilmersdorf',         name: 'Sommerbad Wilmersdorf',           district: 'Wilmersdorf',        type: 'outdoor' },
+      { id: 'sommerbad-pankow',              name: 'Sommerbad Pankow',                district: 'Pankow',             type: 'outdoor' },
+      { id: 'sommerbad-spandau',             name: 'Sommerbad Spandau',               district: 'Spandau',            type: 'outdoor' },
+      // Strandbäder
+      { id: 'strandbad-wannsee',             name: 'Strandbad Wannsee',               district: 'Zehlendorf',         type: 'lake'    },
+      { id: 'strandbad-mueggelsee',          name: 'Strandbad Müggelsee',             district: 'Köpenick',           type: 'lake'    },
+      { id: 'strandbad-grunau',              name: 'Strandbad Grunau',                district: 'Köpenick',           type: 'lake'    },
+    ];
+
+    // Pool IDs that have a corresponding medium-widget preview row.
+    const poolToMprId = {
+      'sse':                 'mpr-sse',
+      'stadtbad-mitte':      'mpr-mitte',
+      'stadtbad-neukoelln':  'mpr-neukoelln',
+      'sommerbad-kreuzberg': 'mpr-kreuzberg',
+    };
+    // These four are pre-selected (= what the medium widget currently shows).
+    const preSelected = new Set(Object.keys(poolToMprId));
+
+    // ── Generate pool checkboxes ────────────────────────────────────────────
+    const typeLabels = { indoor: 'Hallenbäder', outdoor: 'Sommerbäder', lake: 'Strandbäder' };
+    const listEl = document.getElementById('opt-pool-list');
+    let lastType = null;
+
+    allPools.forEach(pool => {
+      if (pool.type !== lastType) {
+        const hdr = document.createElement('div');
+        hdr.className = 'opt-type-header';
+        hdr.textContent = typeLabels[pool.type];
+        listEl.appendChild(hdr);
+        lastType = pool.type;
+      }
+
+      const checked = preSelected.has(pool.id);
+      const row = document.createElement('div');
+      row.className = 'opt-row';
+      row.innerHTML =
+        `<div style="flex:1;min-width:0;overflow:hidden">` +
+          `<div class="opt-row-label" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${pool.name}</div>` +
+          `<div class="opt-pool-district">${pool.district}</div>` +
+        `</div>` +
+        `<label class="opt-switch">` +
+          `<input type="checkbox" id="opt-pool-${pool.id}"${checked ? ' checked' : ''}>` +
+          `<span class="opt-slider"></span>` +
+        `</label>`;
+      listEl.appendChild(row);
+
+      // Wire toggle → medium-row visibility (only pools that have a preview row).
+      const mprId = poolToMprId[pool.id];
+      if (mprId) {
+        row.querySelector('input').addEventListener('change', function () {
+          const mprRow = document.getElementById(mprId);
+          if (mprRow) mprRow.style.display = this.checked ? '' : 'none';
+        });
+      }
     });
   </script>
 
