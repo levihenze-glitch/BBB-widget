@@ -45,6 +45,14 @@ actor BBBScraper {
 
     static let shared = BBBScraper()
 
+    // Compiled once at class-load time; NSRegularExpression is thread-safe.
+    private static let timeRangeRegex: NSRegularExpression =
+        try! NSRegularExpression(pattern: #"(\d{1,2}):(\d{2})\s*[–\-]\s*(\d{1,2}):(\d{2})"#)
+
+    /// Caches the compiled `NSRegularExpression` for each unique `divFragments` pattern.
+    /// NSCache is thread-safe and automatically evicts under memory pressure.
+    private static let divRegexCache: NSCache<NSString, NSRegularExpression> = NSCache()
+
     // A URLSession with browser-like headers to avoid 403 blocks.
     private let session: URLSession = {
         let config = URLSessionConfiguration.default
@@ -119,17 +127,28 @@ actor BBBScraper {
     }
 
     /// Extracts the HTML fragment that contains the opening hours.
+    ///
+    /// Uses a wider 8 KB window and stops at the *next* section heading or
+    /// frame boundary rather than the first `</div>`, which could be an inner
+    /// tag that prematurely truncates a nested table.
     private func extractOpeningHoursSection(_ html: String) -> String? {
         let markers = ["Öffnungszeiten", "ffnungszeiten", "Opening hours"]
         for marker in markers {
-            if let range = html.range(of: marker, options: .caseInsensitive) {
-                let afterMarker = html[range.upperBound...]
-                let window = String(afterMarker.prefix(4096))
-                if let endRange = window.range(of: "</div>") {
-                    return String(window[window.startIndex..<endRange.upperBound])
-                }
-                return window
+            guard let range = html.range(of: marker, options: .caseInsensitive) else { continue }
+            let afterMarker = String(html[range.upperBound...].prefix(8192))
+
+            // Stop just before the next section heading or content frame so we
+            // don't accidentally pick up prices, directions, or other timed entries.
+            let sectionEnds = ["<h2", "<h3", "frame-default frame-type-text",
+                               "Preise", "Anfahrt", "Anreise", "Kontakt"]
+            let cutAt = sectionEnds
+                .compactMap { afterMarker.range(of: $0, options: .caseInsensitive)?.lowerBound }
+                .min()
+
+            if let cutAt {
+                return String(afterMarker[afterMarker.startIndex..<cutAt])
             }
+            return afterMarker
         }
         return nil
     }
@@ -305,9 +324,8 @@ actor BBBScraper {
         let lower = hours.lowercased()
         if lower.contains("geschlossen") || lower.contains("closed") { return false }
 
-        let pattern = #"(\d{1,2}):(\d{2})\s*[–\-]\s*(\d{1,2}):(\d{2})"#
-        guard let regex = try? NSRegularExpression(pattern: pattern),
-              let match = regex.firstMatch(in: hours,
+        let regex = BBBScraper.timeRangeRegex
+        guard let match = regex.firstMatch(in: hours,
                                            range: NSRange(hours.startIndex..., in: hours))
         else { return false }
 
@@ -353,10 +371,19 @@ actor BBBScraper {
             + pattern
             + #"[^"]*"[^>]*>([\s\S]*?)</div>"#
 
-        guard let regex = try? NSRegularExpression(pattern: regexPattern,
-                                                   options: [.caseInsensitive, .dotMatchesLineSeparators]) else {
-            return []
+        let cacheKey = regexPattern as NSString
+        let regex: NSRegularExpression
+        if let cached = BBBScraper.divRegexCache.object(forKey: cacheKey) {
+            regex = cached
+        } else {
+            guard let fresh = try? NSRegularExpression(pattern: regexPattern,
+                                                       options: [.caseInsensitive, .dotMatchesLineSeparators]) else {
+                return []
+            }
+            BBBScraper.divRegexCache.setObject(fresh, forKey: cacheKey)
+            regex = fresh
         }
+
         let ns      = html as NSString
         let matches = regex.matches(in: html, range: NSRange(location: 0, length: ns.length))
         return matches.compactMap { match -> String? in

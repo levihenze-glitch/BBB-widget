@@ -19,6 +19,14 @@ actor GoogleCrowdService {
 
     static let shared = GoogleCrowdService()
 
+    // Compiled once; NSRegularExpression is thread-safe.
+    private static let liveRegex: NSRegularExpression =
+        try! NSRegularExpression(pattern: #",,\[(\d{1,3})\],\["#)
+    private static let altRegex: NSRegularExpression =
+        try! NSRegularExpression(pattern: #"\\"live_busyness_summary\\":.*?(\d{1,3})"#)
+    private static let deRegex: NSRegularExpression =
+        try! NSRegularExpression(pattern: #"Gerade[^\"]*?(\d{1,3})\s*%"#)
+
     private let session: URLSession = {
         let config = URLSessionConfiguration.default
         config.timeoutIntervalForRequest  = 10
@@ -80,29 +88,25 @@ actor GoogleCrowdService {
         // Pattern 1 – live busyness percentage embedded in the data array.
         // Google renders something like: ,[[73],"Gerade etwas belebter als"
         // where 73 is the current occupancy percentage.
-        let livePattern = #",,\[(\d{1,3})\],\["#
-        if let pct = firstMatch(pattern: livePattern, in: html).flatMap(Int.init) {
+        if let pct = firstMatch(GoogleCrowdService.liveRegex, in: html).flatMap(Int.init) {
             return crowdLevel(for: pct)
         }
 
         // Pattern 2 – alternative JSON embedding used by some page variants.
-        let altPattern = #"\\"live_busyness_summary\\":.*?(\d{1,3})"#
-        if let pct = firstMatch(pattern: altPattern, in: html).flatMap(Int.init) {
+        if let pct = firstMatch(GoogleCrowdService.altRegex, in: html).flatMap(Int.init) {
             return crowdLevel(for: pct)
         }
 
         // Pattern 3 – "Gerade" (right now) keyword followed by a percentage.
-        let dePattern = #"Gerade[^\"]*?(\d{1,3})\s*%"#
-        if let pct = firstMatch(pattern: dePattern, in: html).flatMap(Int.init) {
+        if let pct = firstMatch(GoogleCrowdService.deRegex, in: html).flatMap(Int.init) {
             return crowdLevel(for: pct)
         }
 
         return .unknown
     }
 
-    private func firstMatch(pattern: String, in text: String) -> String? {
-        guard let regex = try? NSRegularExpression(pattern: pattern),
-              let match = regex.firstMatch(in: text,
+    private func firstMatch(_ regex: NSRegularExpression, in text: String) -> String? {
+        guard let match = regex.firstMatch(in: text,
                                            range: NSRange(text.startIndex..., in: text)),
               match.numberOfRanges > 1,
               let captureRange = Range(match.range(at: 1), in: text)
