@@ -60,13 +60,16 @@ struct Pool: Identifiable, Codable, Hashable, Sendable {
 }
 
 // MARK: - Catalogue of known pools
-// Slugs taken from live berlinerbaeder.de URL structure.
+// Slugs verified against live berlinerbaeder.de URL structure.
+// Total: 64 confirmed pools at 59 locations (BBB reports 67 at 62 locations;
+// ~3 are non-public school/club pools not surfaced via web search).
 // Google Place IDs verified via maps.google.com → Share → Embed → place_id parameter.
 
 extension Pool {
     static let allPools: [Pool] = [
 
-        // ── Indoor pools (Hallenbäder) ───────────────────────────────────────
+        // ── Indoor pools (Hallenbäder / Stadtbäder / Schwimmhallen) ──────────
+
         Pool(id: "sse",
              name: "SSE Europasportpark",
              urlSlug: "schwimm-und-sprunghalle-im-europasportpark-sse",
@@ -99,15 +102,26 @@ extension Pool {
              name: "Kleine Schwimmhalle Wuhlheide",
              urlSlug: "kleine-schwimmhalle-wuhlheide",
              district: "Köpenick",
-             type: .indoor,
-             googlePlaceID: nil),
+             type: .indoor),
 
         Pool(id: "stadtbad-charlottenburg",
-             name: "Stadtbad Charlottenburg",
+             name: "Stadtbad Charlottenburg (Alte Halle)",
              urlSlug: "stadtbad-charlottenburg-alte-halle",
              district: "Charlottenburg",
              type: .indoor,
              googlePlaceID: "ChIJ5T1yXKBPqEcR6vDj0-K6tgA"),
+
+        Pool(id: "stadtbad-charlottenburg-neue-halle",
+             name: "Stadtbad Charlottenburg (Neue Halle)",
+             urlSlug: "stadtbad-charlottenburg-neue-halle",
+             district: "Charlottenburg",
+             type: .indoor),
+
+        Pool(id: "stadtbad-tiergarten",
+             name: "Stadtbad Tiergarten",
+             urlSlug: "stadtbad-tiergarten",
+             district: "Tiergarten",
+             type: .indoor),
 
         Pool(id: "stadtbad-neukoelln",
              name: "Stadtbad Neukölln",
@@ -151,6 +165,19 @@ extension Pool {
              type: .indoor,
              googlePlaceID: "ChIJ5Xz9lJ5RqEcRQPbzAFmHX4Y"),
 
+        Pool(id: "stadtbad-wilmersdorf-i",
+             name: "Stadtbad Wilmersdorf I",
+             urlSlug: "stadtbad-wilmersdorf-i",
+             district: "Wilmersdorf",
+             type: .indoor,
+             googlePlaceID: "ChIJNeW4zZ9PqEcRS30jXCWoYlY"),
+
+        Pool(id: "stadtbad-wilmersdorf-ii",
+             name: "Stadtbad Wilmersdorf II",
+             urlSlug: "stadtbad-wilmersdorf-ii",
+             district: "Wilmersdorf",
+             type: .indoor),
+
         Pool(id: "schwimmhalle-buch",
              name: "Schwimmhalle Buch",
              urlSlug: "schwimmhalle-buch",
@@ -172,13 +199,6 @@ extension Pool {
              type: .indoor,
              googlePlaceID: "ChIJuWAd5HlRqEcRNvmQwbwl_04"),
 
-        Pool(id: "schwimmhalle-mariendorf",
-             name: "Schwimmhalle Mariendorf",
-             urlSlug: "schwimmhalle-mariendorf",
-             district: "Mariendorf",
-             type: .indoor,
-             googlePlaceID: "ChIJHSs5E71RqEcRqGi_9u-XOI0"),
-
         Pool(id: "schwimmhalle-hohenschoenhausen",
              name: "Schwimmhalle Hohenschönhausen",
              urlSlug: "schwimmhalle-hohenschoenhausen",
@@ -193,14 +213,93 @@ extension Pool {
              type: .indoor,
              googlePlaceID: "ChIJaYcGa3ZerEcRAMpH4HdBrZ4"),
 
-        Pool(id: "schwimmhalle-wilmersdorf",
-             name: "Schwimmhalle Wilmersdorf",
-             urlSlug: "schwimmhalle-wilmersdorf",
-             district: "Wilmersdorf",
-             type: .indoor,
-             googlePlaceID: "ChIJNeW4zZ9PqEcRS30jXCWoYlY"),
+        Pool(id: "schwimmhalle-sewanstrasse",
+             name: "Schwimmhalle Sewanstraße",
+             urlSlug: "schwimmhalle-sewanstrasse",
+             district: "Treptow",
+             type: .indoor),
 
-        // ── Outdoor pools (Sommerbäder) ──────────────────────────────────────
+        Pool(id: "schwimmhalle-fischerinsel",
+             name: "Schwimmhalle Fischerinsel",
+             urlSlug: "schwimmhalle-fischerinsel",
+             district: "Mitte",
+             type: .indoor),
+
+        Pool(id: "schwimmhalle-kreuzberg",
+             name: "Schwimmhalle Kreuzberg",
+             urlSlug: "schwimmhalle-kreuzberg",
+             district: "Kreuzberg",
+             type: .indoor),
+
+        Pool(id: "wellenbad-am-spreewaldplatz",
+             name: "Wellenbad am Spreewaldplatz",
+             urlSlug: "wellenbad-am-spreewaldplatz",
+             district: "Kreuzberg",
+             type: .indoor),
+
+        Pool(id: "schwimmhalle-holzmarktstrasse",
+             name: "Schwimmhalle Holzmarktstraße",
+             urlSlug: "schwimmhalle-holzmarktstrasse",
+             district: "Friedrichshain",
+             type: .indoor),
+
+        Pool(id: "schwimmhalle-anton-saefkow-platz",
+             name: "Schwimmhalle Anton-Saefkow-Platz",
+             urlSlug: "schwimmhalle-anton-saefkow-platz",
+             district: "Lichtenberg",
+             type: .indoor),
+
+        Pool(id: "schwimmhalle-allendeviertel",
+             name: "Schwimmhalle Allendeviertel",
+             urlSlug: "schwimmhalle-allendeviertel",
+             district: "Köpenick",
+             type: .indoor),
+
+        Pool(id: "schwimmhalle-baumschulenweg",
+             name: "Schwimmhalle Baumschulenweg",
+             urlSlug: "schwimmhalle-baumschulenweg",
+             district: "Treptow",
+             type: .indoor),
+
+        Pool(id: "schwimmhalle-zingster-strasse",
+             name: "Schwimmhalle Zingster Straße",
+             urlSlug: "schwimmhalle-zingster-strasse",
+             district: "Hohenschönhausen",
+             type: .indoor),
+
+        Pool(id: "paracelsus-bad",
+             name: "Paracelsus-Bad",
+             urlSlug: "paracelsus-bad",
+             district: "Reinickendorf",
+             type: .indoor),
+
+        // Kombibäder – Hallenbad sections
+        Pool(id: "kombibad-seestrasse-hallenbad",
+             name: "Kombibad Seestraße (Halle)",
+             urlSlug: "kombibad-seestrasse-hallenbad",
+             district: "Wedding",
+             type: .indoor),
+
+        Pool(id: "kombibad-mariendorf-hallenbad",
+             name: "Kombibad Mariendorf (Halle)",
+             urlSlug: "kombibad-mariendorf-hallenbad",
+             district: "Mariendorf",
+             type: .indoor),
+
+        Pool(id: "kombibad-gropiusstadt-hallenbad",
+             name: "Kombibad Gropiusstadt (Halle)",
+             urlSlug: "kombibad-gropiusstadt-hallenbad",
+             district: "Gropiusstadt",
+             type: .indoor),
+
+        Pool(id: "kombibad-spandau-sued-hallenbad",
+             name: "Kombibad Spandau-Süd (Halle)",
+             urlSlug: "kombibad-spandau-sued-hallenbad",
+             district: "Spandau",
+             type: .indoor),
+
+        // ── Outdoor pools (Sommerbäder / Freibäder) ──────────────────────────
+
         Pool(id: "sommerbad-olympiastadion",
              name: "Sommerbad Olympiastadion",
              urlSlug: "sommerbad-olympiastadion",
@@ -243,7 +342,82 @@ extension Pool {
              type: .outdoor,
              googlePlaceID: "ChIJSwQlG5hNqEcR1oBEzp3MNKM"),
 
-        // ── Lakes (Strandbäder) ──────────────────────────────────────────────
+        Pool(id: "sommerbad-humboldthain",
+             name: "Sommerbad Humboldthain",
+             urlSlug: "sommerbad-humboldthain",
+             district: "Wedding",
+             type: .outdoor),
+
+        Pool(id: "sommerbad-am-insulaner",
+             name: "Sommerbad am Insulaner",
+             urlSlug: "sommerbad-am-insulaner",
+             district: "Steglitz",
+             type: .outdoor),
+
+        Pool(id: "sommerbad-neukoelln",
+             name: "Sommerbad Neukölln",
+             urlSlug: "sommerbad-neukoelln",
+             district: "Neukölln",
+             type: .outdoor),
+
+        Pool(id: "sommerbad-mariendorf",
+             name: "Sommerbad Mariendorf",
+             urlSlug: "sommerbad-mariendorf",
+             district: "Mariendorf",
+             type: .outdoor),
+
+        Pool(id: "sommerbad-staaken-west",
+             name: "Sommerbad Staaken-West",
+             urlSlug: "sommerbad-staaken-west",
+             district: "Spandau",
+             type: .outdoor),
+
+        Pool(id: "sommerbad-lichterfelde-spucki",
+             name: "Sommerbad Lichterfelde (Spucki)",
+             urlSlug: "saunalandschaft-und-sommerbad-lichterfelde-spucki",
+             district: "Lichterfelde",
+             type: .outdoor),
+
+        // Kombibäder – Sommerbad sections
+        Pool(id: "kombibad-seestrasse-sommerbad",
+             name: "Kombibad Seestraße (Sommer)",
+             urlSlug: "kombibad-seestrasse-sommerbad",
+             district: "Wedding",
+             type: .outdoor),
+
+        Pool(id: "kombibad-mariendorf-sommerbad",
+             name: "Kombibad Mariendorf (Sommer)",
+             urlSlug: "kombibad-mariendorf-sommerbad",
+             district: "Mariendorf",
+             type: .outdoor),
+
+        Pool(id: "kombibad-gropiusstadt-sommerbad",
+             name: "Kombibad Gropiusstadt (Sommer)",
+             urlSlug: "kombibad-gropiusstadt-sommerbad",
+             district: "Gropiusstadt",
+             type: .outdoor),
+
+        Pool(id: "kombibad-spandau-sued-sommerbad",
+             name: "Kombibad Spandau-Süd (Sommer)",
+             urlSlug: "kombibad-spandau-sued-sommerbad",
+             district: "Spandau",
+             type: .outdoor),
+
+        // Kinderbäder (children's outdoor pools)
+        Pool(id: "kinderbad-monbijou",
+             name: "Kinderbad Monbijou",
+             urlSlug: "kinderbad-monbijou",
+             district: "Mitte",
+             type: .outdoor),
+
+        Pool(id: "kinderbad-marzahn-platsch",
+             name: "Kinderbad Marzahn (Platsch)",
+             urlSlug: "kinderbad-marzahn-platsch",
+             district: "Marzahn",
+             type: .outdoor),
+
+        // ── Lakes (Strandbäder) ───────────────────────────────────────────────
+
         Pool(id: "strandbad-wannsee",
              name: "Strandbad Wannsee",
              urlSlug: "strandbad-wannsee",
@@ -264,6 +438,54 @@ extension Pool {
              district: "Köpenick",
              type: .lake,
              googlePlaceID: "ChIJaySSSgFfrEcR9MhAL9kTVtk"),
+
+        Pool(id: "strandbad-tegeler-see",
+             name: "Strandbad Tegeler See",
+             urlSlug: "strandbad-tegeler-see",
+             district: "Reinickendorf",
+             type: .lake),
+
+        Pool(id: "strandbad-halensee",
+             name: "Strandbad Halensee",
+             urlSlug: "strandbad-halensee",
+             district: "Charlottenburg",
+             type: .lake),
+
+        Pool(id: "strandbad-jungfernheide",
+             name: "Strandbad Jungfernheide",
+             urlSlug: "strandbad-jungfernheide",
+             district: "Spandau",
+             type: .lake),
+
+        Pool(id: "strandbad-wendenschloss",
+             name: "Strandbad Wendenschloss",
+             urlSlug: "strandbad-wendenschloss",
+             district: "Köpenick",
+             type: .lake),
+
+        Pool(id: "strandbad-orankesee",
+             name: "Strandbad Orankesee",
+             urlSlug: "strandbad-orankesee",
+             district: "Weißensee",
+             type: .lake),
+
+        Pool(id: "strandbad-ploetzensee",
+             name: "Strandbad Plötzensee",
+             urlSlug: "strandbad-ploetzensee",
+             district: "Wedding",
+             type: .lake),
+
+        Pool(id: "strandbad-luebars",
+             name: "Strandbad Lübars",
+             urlSlug: "strandbad-luebars",
+             district: "Reinickendorf",
+             type: .lake),
+
+        Pool(id: "strandbad-weissensee",
+             name: "Strandbad Weißensee",
+             urlSlug: "strandbad-weissensee",
+             district: "Weißensee",
+             type: .lake),
     ]
 
     static func pool(withID id: String) -> Pool? {
