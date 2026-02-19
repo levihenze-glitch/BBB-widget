@@ -60,6 +60,11 @@ private struct SmallPoolView: View {
 
                     Spacer()
 
+                    // Crowd level indicator (if known)
+                    if s.crowdLevel != .unknown {
+                        CrowdBar(level: s.crowdLevel)
+                    }
+
                     // Open / closed badge
                     StatusBadge(isOpen: s.isCurrentlyOpen)
 
@@ -185,6 +190,11 @@ private struct PoolColumn: View {
                 }
             }
 
+            if status.crowdLevel != .unknown {
+                CrowdBar(level: status.crowdLevel)
+                    .padding(.top, 2)
+            }
+
             if status.hasWarning {
                 WarningDot(label: status.warnings.first)
             }
@@ -218,9 +228,16 @@ private struct PoolRow: View {
                             .font(.system(size: 10))
                             .foregroundColor(Token.warningColor)
                     }
+                    Spacer()
+                    // Crowd level label in large widget rows
+                    if status.crowdLevel != .unknown {
+                        Text(status.crowdLevel.label)
+                            .font(.system(size: 9, weight: .medium))
+                            .foregroundColor(crowdColor(status.crowdLevel).opacity(0.9))
+                    }
                 }
 
-                // Hours schedule
+                // Hours schedule (with session-type icon)
                 if !status.openingHours.isEmpty {
                     HStack(spacing: 8) {
                         ForEach(status.openingHours.prefix(3), id: \.dayLabel) { entry in
@@ -241,7 +258,6 @@ private struct PoolRow: View {
                         .lineLimit(2)
                 }
             }
-            Spacer()
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 9)
@@ -253,12 +269,64 @@ private struct HoursRowCompact: View {
 
     var body: some View {
         HStack(spacing: 2) {
+            // ── Session-type icon (Bug fix #3 iconography) ───────────────────
+            // Full public swimming: wave icon  /  Reduced area: half-drop icon
+            if entry.activityType != nil {
+                Image(systemName: entry.hasReducedArea ? "drop.halffull" : "figure.pool.swim")
+                    .font(.system(size: 7))
+                    .foregroundColor(entry.hasReducedArea
+                                     ? Token.warningColor.opacity(0.8)
+                                     : Token.openColor.opacity(0.7))
+            }
             Text(entry.dayLabel)
                 .foregroundColor(.white.opacity(0.55))
             Text(entry.hours)
                 .foregroundColor(.white.opacity(0.85))
         }
         .font(.system(size: 9, design: .monospaced))
+    }
+}
+
+// MARK: - Crowd level bar
+
+/// A compact 5-segment bar representing current busyness.
+private struct CrowdBar: View {
+    let level: CrowdLevel
+
+    private let segments = 5
+
+    var body: some View {
+        HStack(spacing: 2) {
+            Image(systemName: "person.2.fill")
+                .font(.system(size: 7))
+                .foregroundColor(crowdColor(level).opacity(0.8))
+            ForEach(0..<segments, id: \.self) { i in
+                RoundedRectangle(cornerRadius: 1.5)
+                    .fill(i < filledSegments ? crowdColor(level) : Color.white.opacity(0.15))
+                    .frame(width: 7, height: 4)
+            }
+        }
+    }
+
+    private var filledSegments: Int {
+        switch level {
+        case .unknown:        return 0
+        case .notBusy:        return 1
+        case .slightlyBusy:   return 2
+        case .moderatelyBusy: return 3
+        case .busy:           return 4
+        case .veryBusy:       return 5
+        }
+    }
+}
+
+// MARK: - Shared helpers
+
+private func crowdColor(_ level: CrowdLevel) -> Color {
+    switch level {
+    case .unknown, .notBusy, .slightlyBusy: return Token.openColor
+    case .moderatelyBusy:                   return Token.warningColor
+    case .busy, .veryBusy:                  return Token.closedColor
     }
 }
 

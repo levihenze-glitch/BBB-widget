@@ -27,9 +27,8 @@ enum ScraperError: Error, LocalizedError {
 ///   <div class="frame frame-default frame-type-text …">
 ///     <header><h2 class="ce-headline …">Öffnungszeiten</h2></header>
 ///     <div class="ce-bodytext">
-///       <!-- Either a <table> with <tr><td>day</td><td>hours</td></tr> -->
-///       <!-- or a <dl> with <dt>day</dt><dd>hours</dd>                 -->
-///       <!-- or plain <p> paragraphs with "Day: HH:MM–HH:MM Uhr"      -->
+///       <!-- Table with 3 columns: Tag | Uhrzeit | Nutzungsart        -->
+///       <!-- or 2-column table / <dl> / plain <p> on some pages       -->
 ///     </div>
 ///   </div>
 ///
@@ -82,9 +81,18 @@ actor BBBScraper {
 
     private func buildStatus(pool: Pool, html: String) -> PoolStatus {
         let warnings     = parseWarnings(html)
-        let openingHours = parseOpeningHours(html)
-        let todayHours   = todayEntry(from: openingHours)
-        let isOpen       = isCurrentlyOpen(todayHours: todayHours)
+        let allHours     = parseOpeningHours(html)
+
+        // ── Bug fix #3 ─────────────────────────────────────────────────────
+        // Keep only rows that represent public swimming sessions.
+        // If the table has no Nutzungsart column (2-col format) every entry
+        // passes isPublicSwimming, so nothing is lost.
+        let publicHours = allHours.filter { $0.isPublicSwimming }
+        let openingHours = publicHours.isEmpty ? allHours : publicHours
+
+        let todaySlots   = todaySlots(from: openingHours)
+        let todayHours   = todaySlots.first    // first slot shown in widget
+        let isOpen       = todaySlots.contains { isCurrentlyOpen(hours: $0) }
 
         return PoolStatus(
             pool: pool,
@@ -99,24 +107,24 @@ actor BBBScraper {
     // MARK: - Private: Opening Hours Parsing
 
     private func parseOpeningHours(_ html: String) -> [OpeningHoursEntry] {
-        // Find the Öffnungszeiten content block.
+        // ── Bug fix #1 ─────────────────────────────────────────────────────
+        // Only parse hours from the dedicated Öffnungszeiten section.
+        // Returning [] when the section is absent (e.g. Sommerbad Kreuzberg
+        // off-season) prevents random times elsewhere on the page being
+        // misinterpreted as opening hours.
         guard let sectionHTML = extractOpeningHoursSection(html) else {
-            return parseHoursFromRaw(html)   // graceful fallback
+            return []
         }
         return parseHoursFromRaw(sectionHTML)
     }
 
     /// Extracts the HTML fragment that contains the opening hours.
     private func extractOpeningHoursSection(_ html: String) -> String? {
-        // Look for any element whose text contains "Öffnungszeiten" / "ffnungszeiten"
-        // and return the content block following it.
         let markers = ["Öffnungszeiten", "ffnungszeiten", "Opening hours"]
         for marker in markers {
             if let range = html.range(of: marker, options: .caseInsensitive) {
-                // Grab a window of HTML after the marker (up to 4 KB should be enough).
                 let afterMarker = html[range.upperBound...]
                 let window = String(afterMarker.prefix(4096))
-                // Find the end of the parent block (</div> or </section>).
                 if let endRange = window.range(of: "</div>") {
                     return String(window[window.startIndex..<endRange.upperBound])
                 }
@@ -134,6 +142,9 @@ actor BBBScraper {
     }
 
     // ── Strategy 1: <table> ──────────────────────────────────────────────────
+    // berlinerbaeder.de typically uses a 3-column table:
+    //   <td>Tag</td>  <td>Uhrzeit</td>  <td>Nutzungsart</td>
+    // Some pages only have 2 columns.
 
     private func parseTable(_ html: String) -> [OpeningHoursEntry]? {
         guard html.contains("<table") else { return nil }
@@ -146,7 +157,18 @@ actor BBBScraper {
             let day   = stripTags(cells[0]).trimmingCharacters(in: .whitespacesAndNewlines)
             let hours = stripTags(cells[1]).trimmingCharacters(in: .whitespacesAndNewlines)
             guard !day.isEmpty, !hours.isEmpty else { continue }
-            entries.append(OpeningHoursEntry(dayLabel: day, hours: hours))
+
+            // ── Bug fix #3: read optional 3rd column (Nutzungsart) ──────────
+            let activityType: String?
+            if cells.count >= 3 {
+                let raw = stripTags(cells[2]).trimmingCharacters(in: .whitespacesAndNewlines)
+                activityType = raw.isEmpty ? nil : raw
+            } else {
+                activityType = nil
+            }
+
+            entries.append(OpeningHoursEntry(dayLabel: day, hours: hours,
+                                             activityType: activityType))
         }
         return entries.isEmpty ? nil : entries
     }
@@ -172,12 +194,10 @@ actor BBBScraper {
     // ── Strategy 3: <p> paragraphs with "Day: HH:MM" ────────────────────────
 
     private func parseParagraphs(_ html: String) -> [OpeningHoursEntry] {
-        // e.g. "<p>Montag – Freitag: 06:30 – 22:00 Uhr</p>"
         let paragraphs = components(of: html, between: "<p", and: "</p>")
         var entries: [OpeningHoursEntry] = []
         for para in paragraphs {
             let text = stripTags(para).trimmingCharacters(in: .whitespacesAndNewlines)
-            // Must contain a colon separating day from time and look like hours.
             guard text.contains(":"),
                   text.contains("Uhr") || text.range(of: #"\d{2}:\d{2}"#, options: .regularExpression) != nil
             else { continue }
@@ -196,7 +216,6 @@ actor BBBScraper {
     private func parseWarnings(_ html: String) -> [String] {
         var results: [String] = []
 
-        // Class-name patterns for warning / notice boxes on TYPO3 sites.
         let divPatterns = [
             "message--warning",
             "message--danger",
@@ -205,8 +224,8 @@ actor BBBScraper {
             "alert-danger",
             "alert-info",
             "ce-notice",
-            "frame-type-text.*?warning",   // TYPO3 custom classes
-            "tx-bbb-notice",               // potential BBB-specific class
+            "frame-type-text.*?warning",
+            "tx-bbb-notice",
         ]
 
         for pattern in divPatterns {
@@ -221,7 +240,6 @@ actor BBBScraper {
             }
         }
 
-        // Also scan <p class="notice"> and standalone <strong>Hinweis:</strong> blocks.
         let pFragments = components(of: html, between: "<p class=\"notice", and: "</p>")
         for fragment in pFragments {
             let text = stripTags(fragment).trimmingCharacters(in: .whitespacesAndNewlines)
@@ -235,9 +253,16 @@ actor BBBScraper {
 
     // MARK: - Private: Open-right-now Logic
 
-    /// Returns the hours string for today from the parsed opening-hours list.
-    private func todayEntry(from entries: [OpeningHoursEntry]) -> String? {
-        let weekday = Calendar.current.component(.weekday, from: Date())
+    /// Returns all hours strings for today from the given opening-hours list.
+    /// Multiple rows can match (e.g. morning & afternoon public slots).
+    ///
+    /// ── Bug fix #2 ─────────────────────────────────────────────────────────
+    /// Uses the Europe/Berlin timezone so the weekday and hour comparison is
+    /// always correct regardless of where the device/server is located.
+    private func todaySlots(from entries: [OpeningHoursEntry]) -> [String] {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = TimeZone(identifier: "Europe/Berlin") ?? .current
+        let weekday = cal.component(.weekday, from: Date())
         // weekday: 1=Sunday, 2=Monday, … 7=Saturday
 
         let dayMap: [(keywords: [String], weekdays: Set<Int>)] = [
@@ -253,26 +278,32 @@ actor BBBScraper {
             (["Sonntag", "So"],      [1]),
         ]
 
+        var slots: [String] = []
         for entry in entries {
             for mapping in dayMap {
                 if mapping.weekdays.contains(weekday),
                    mapping.keywords.contains(where: { entry.dayLabel.contains($0) }) {
-                    return entry.hours
+                    slots.append(entry.hours)
+                    break
                 }
             }
         }
 
-        // Last resort: return the first entry (most pools lead with their main hours).
-        return entries.first?.hours
+        // Last resort: return the first entry's hours.
+        if slots.isEmpty, let first = entries.first {
+            return [first.hours]
+        }
+        return slots
     }
 
-    /// Crude open/closed check based on the current time and hours string.
-    private func isCurrentlyOpen(todayHours: String?) -> Bool {
-        guard let hours = todayHours else { return false }
+    /// Returns true if the current Berlin time falls within the given hours string.
+    /// Handles "geschlossen", multi-slot ranges, and past-midnight close times.
+    ///
+    /// ── Bug fix #2 ─────────────────────────────────────────────────────────
+    private func isCurrentlyOpen(hours: String) -> Bool {
         let lower = hours.lowercased()
         if lower.contains("geschlossen") || lower.contains("closed") { return false }
 
-        // Try to parse "HH:MM–HH:MM" or "HH:MM - HH:MM".
         let pattern = #"(\d{1,2}):(\d{2})\s*[–\-]\s*(\d{1,2}):(\d{2})"#
         guard let regex = try? NSRegularExpression(pattern: pattern),
               let match = regex.firstMatch(in: hours,
@@ -286,7 +317,8 @@ actor BBBScraper {
         guard let openH  = intGroup(1), let openM  = intGroup(2),
               let closeH = intGroup(3), let closeM = intGroup(4) else { return false }
 
-        let cal  = Calendar.current
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = TimeZone(identifier: "Europe/Berlin") ?? .current
         let now  = Date()
         let nowH = cal.component(.hour,   from: now)
         let nowM = cal.component(.minute, from: now)
@@ -301,13 +333,11 @@ actor BBBScraper {
 
     // MARK: - Private: HTML Utilities
 
-    /// Returns all substrings found between `open` and `close` tags.
     private func components(of html: String, between open: String, and close: String) -> [String] {
         var results: [String] = []
         var searchRange = html.startIndex..<html.endIndex
 
         while let startRange = html.range(of: open, options: .caseInsensitive, range: searchRange) {
-            // Skip to the end of the opening tag (">").
             guard let tagEnd = html.range(of: ">", range: startRange.upperBound..<html.endIndex) else { break }
             guard let endRange = html.range(of: close, options: .caseInsensitive, range: tagEnd.upperBound..<html.endIndex) else { break }
 
@@ -317,14 +347,13 @@ actor BBBScraper {
         return results
     }
 
-    /// Returns the inner-HTML of all `<div …class="…{pattern}…">…</div>` blocks.
     private func divFragments(matching pattern: String, in html: String) -> [String] {
-        // Build a regex: <div[^>]*class="[^"]*{pattern}[^"]*"[^>]*>(.*?)</div>
         let regexPattern = #"<div[^>]*class="[^"]*"#
             + pattern
             + #"[^"]*"[^>]*>([\s\S]*?)</div>"#
 
-        guard let regex = try? NSRegularExpression(pattern: regexPattern, options: [.caseInsensitive, .dotMatchesLineSeparators]) else {
+        guard let regex = try? NSRegularExpression(pattern: regexPattern,
+                                                   options: [.caseInsensitive, .dotMatchesLineSeparators]) else {
             return []
         }
         let ns      = html as NSString
@@ -337,7 +366,6 @@ actor BBBScraper {
         }
     }
 
-    /// Removes all HTML tags from a string.
     private func stripTags(_ html: String) -> String {
         html.replacingOccurrences(of: "<[^>]+>",
                                   with: " ",
@@ -362,7 +390,6 @@ actor PoolStatusCache {
     private let encoder  = JSONEncoder()
     private let decoder  = JSONDecoder()
 
-    /// How long a cached entry stays valid (in seconds).
     private let ttl: TimeInterval = 60 * 30   // 30 minutes
 
     func cachedStatus(for pool: Pool) -> PoolStatus? {

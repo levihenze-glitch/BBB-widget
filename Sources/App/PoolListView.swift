@@ -113,16 +113,47 @@ struct PoolDetailView: View {
                 }
             }
 
+            // Crowd level
+            if let s = status, s.crowdLevel != .unknown {
+                Section("Auslastung") {
+                    HStack(spacing: 10) {
+                        Image(systemName: "person.2.fill")
+                            .foregroundColor(crowdColor(s.crowdLevel))
+                        Text(s.crowdLevel.label)
+                            .font(.body)
+                        Spacer()
+                        CrowdFractionBar(fraction: s.crowdLevel.fraction,
+                                         color: crowdColor(s.crowdLevel))
+                    }
+                    .padding(.vertical, 2)
+                }
+            }
+
             // Opening hours
             if let s = status, !s.openingHours.isEmpty {
-                Section("Öffnungszeiten") {
+                Section("Öffnungszeiten (öffentl. Schwimmen)") {
                     ForEach(s.openingHours, id: \.dayLabel) { entry in
                         HStack {
+                            // Session-type icon
+                            Image(systemName: entry.hasReducedArea
+                                             ? "drop.halffull"
+                                             : "figure.pool.swim")
+                                .font(.footnote)
+                                .foregroundColor(entry.hasReducedArea ? .orange : .teal)
+                                .frame(width: 20)
+
                             Text(entry.dayLabel)
                                 .foregroundColor(.secondary)
                             Spacer()
-                            Text(entry.hours)
-                                .font(.system(.body, design: .monospaced))
+                            VStack(alignment: .trailing, spacing: 2) {
+                                Text(entry.hours)
+                                    .font(.system(.body, design: .monospaced))
+                                if entry.hasReducedArea {
+                                    Text("eingeschränkte Wasserfläche")
+                                        .font(.caption2)
+                                        .foregroundColor(.orange)
+                                }
+                            }
                         }
                     }
                 }
@@ -223,6 +254,31 @@ private func typeIcon(_ type: Pool.PoolType) -> String {
     case .indoor:  return "building.2.fill"
     case .outdoor: return "sun.max.fill"
     case .lake:    return "water.waves"
+    }
+}
+
+private func crowdColor(_ level: CrowdLevel) -> Color {
+    switch level {
+    case .unknown, .notBusy, .slightlyBusy: return .teal
+    case .moderatelyBusy:                   return .orange
+    case .busy, .veryBusy:                  return .red
+    }
+}
+
+private struct CrowdFractionBar: View {
+    let fraction: Double
+    let color: Color
+    private let totalWidth: CGFloat = 80
+
+    var body: some View {
+        ZStack(alignment: .leading) {
+            RoundedRectangle(cornerRadius: 3)
+                .fill(Color.secondary.opacity(0.2))
+                .frame(width: totalWidth, height: 6)
+            RoundedRectangle(cornerRadius: 3)
+                .fill(color)
+                .frame(width: max(6, totalWidth * fraction), height: 6)
+        }
     }
 }
 

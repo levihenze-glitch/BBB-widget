@@ -96,9 +96,14 @@ struct PoolWidgetProvider: AppIntentTimelineProvider {
         if let cached = await PoolStatusCache.shared.cachedStatus(for: pool) {
             return cached
         }
-        // 2. Fetch from network.
+        // 2. Fetch BBB opening hours and Google crowd level concurrently.
         do {
-            let status = try await BBBScraper.shared.fetchPoolStatus(for: pool)
+            async let bbbStatus = BBBScraper.shared.fetchPoolStatus(for: pool)
+            async let crowdLevel = pool.googlePlaceID.map {
+                await GoogleCrowdService.shared.fetchCrowdLevel(placeID: $0)
+            } ?? CrowdLevel.unknown
+
+            let status = try await bbbStatus.withCrowdLevel(await crowdLevel)
             await PoolStatusCache.shared.store(status)
             return status
         } catch {
